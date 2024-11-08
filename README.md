@@ -10,7 +10,18 @@ fault injection
 This library is designed to allow the client to control the fault injection,
 and is generally designed to allow testing of error handling code
 
+
+
+## Example implementation
 Example implementations are in the /cmd/client and /cmd/server directory
+
+**Client**
+
+https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/client/client.go
+
+**Server**
+
+https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/server/server.go
 
 ## Client usage
 
@@ -22,11 +33,15 @@ type UnaryClientInterceptorConfig struct {
 	ServerFaultCodes   string
 }
 ```
+
 ### ClientFaultPercent
 The client can be configured to randomly trigger the fault headers to be injected.
 
-e.g. ClientFaultPercent = 10 means 10% of the time the metadata(headers) are injected
-e.g. ClientFaultPercent = 100 means 100% of the time the metadata(headers) are injected = Always
+| ClientFaultPercent | Description                                                  |
+| ------------------ | ------------------------------------------------------------ |
+| 10                 | 10% of the time the metadata(headers) are injected           |
+| 100                | 100% of the time the metadata(headers) are injected = Always |
+
 
 ### ServerFaultPercent
 The client can make requests with "faultpercent" and "faultcodes" metadata(headers)
@@ -34,26 +49,49 @@ The client can make requests with "faultpercent" and "faultcodes" metadata(heade
 The configuration ServerFaultPercent injects the "faultpercent" header which is
 passed to the server.
 
-e.g. ServerFaultPercent = 100 means the server will always return a fault = Always
-e.g. ServerFaultPercent = 50 means there is a 50% chance that the server will return a fault.
+| ServerFaultPercent | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| 50                 | 50% there is a 50% chance that the server will return a fault   |
+| 90                 | 90% chance the server will always return a fault                |
+| 100                | 100% of the time the server will always return a fault = Always |
 
-The client adds the headers, which are passed to the server:
+The client adds the "faultpercent" header which is passed to the server:
 
-"faultpercent"
-percentage needs to be a integer between 0-100
-e.g. faultpercent = 10 ( 10% )
-e.g. faultpercent = 90 ( 90% )
+| "faultpercent"     | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| 50                 | 50% there is a 50% chance that the server will return a fault   |
+| 90                 | 90% chance the server will always return a fault                |
+| 100                | 100% of the time the server will always return a fault = Always |
 
-"faultcodes"
-a single code, or a comma seperated list of codes
-// e.g. faultcodes = 14 (unavailable)
-// e.g. faultcodes = 10,12,14
+### ServerFaultCodes
+
+The configuration ServerFaultCodes injects the "faultcodes" header which is
+passed to the server.
 
 If "faultcodes" is NOT supplied, any random valid GRPC status code, except zero (0), is returned
+
+| "faultcodes  "     | Description                                                         |
+| ------------------ | ------------------------------------------------------------------- |
+| 14                 | If the server injects the fault, the only return status is 14       |
+| 10,12,14           | If the server injects the fault, possible status codes are 10,12,14 |
+| <not set >         | If the server injects the fault, codes 1-16 are possible            |
+
 
 Possible failcodes are:
 https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
 
+## Config Matrix
+
+Pleae keep in mind the ClientFaultPercent and ServerFaultPercent result in fault
+injection probabilities like the following:
+
+| ClientFaultPercent | ServerFaultPercent | Probability |
+|--------------------|--------------------|-------------|
+| 10                 | 10                 | 1%          |
+| 50                 | 50                 | 25%         |
+| 100                | 50                 | 50%         |
+| 50                 | 100                | 50%         |
+| 100                | 100                | 100%        |
 
 ## Examples
 
@@ -136,3 +174,26 @@ The server headers for this example look like this.
 Keep in mind although this is a HTTP 200, it's actually a grpc-status = 14
 
 <img src="./docs/Screenshot from 2024-11-08 11-38-12.png" alt="xtcp_sampling diagram" width="100%" height="100%"/>
+
+## GRPC Metadata
+
+The GRPC library calls the HTTP2 headers "metadata".  I guess this isn't wrong, but it is a little confusing.
+
+See also:
+
+https://grpc.io/docs/guides/metadata/
+
+https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/client/main.go
+
+## GRPC Interceptors
+
+UnaryClientInterceptor
+
+https://pkg.go.dev/google.golang.org/grpc?utm_source=godoc#UnaryClientInterceptor
+
+UnaryServerInterceptor
+
+https://pkg.go.dev/google.golang.org/grpc?utm_source=godoc#UnaryServerInterceptor
+
+## Todo
+Streaming version
