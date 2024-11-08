@@ -2,7 +2,7 @@
 	"loadBalancingConfig": [{"round_robin":{}}],
 	"timeout": "10.000000001s",
 	"methodConfig": [{
-		"name": [{"service": "grpc.examples.echo.Echo"}],
+		"name": [{}],
 		"retryPolicy": {
 			"MaxAttempts": 1,
 			"InitialBackoff": ".01s",

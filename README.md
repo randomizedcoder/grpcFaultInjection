@@ -179,6 +179,28 @@ Keep in mind although this is a HTTP 200, it's actually a grpc-status = 14
 
 The GRPC library calls the HTTP2 headers "metadata".  I guess this isn't wrong, but it is a little confusing.
 
+
+If we "follow the HTTP2 stream" in wireshark, we see the HTTP2 headers look like the following
+
+```
+:method: POST
+:scheme: http
+:path: /grpc.examples.echo.Echo/UnaryEcho
+:authority: localhost:50052
+content-type: application/grpc
+user-agent: grpc-go/1.68.0
+te: trailers
+grpc-timeout: 995078u
+faultpercent: 100
+faultcodes: 10,12,14
+
+:status: 200
+content-type: application/grpc
+grpc-status: 10
+grpc-message: intercept fault code:10 rp:96 success:0 fault:1
+```
+
+
 See also:
 
 https://grpc.io/docs/guides/metadata/
