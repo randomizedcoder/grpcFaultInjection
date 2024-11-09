@@ -78,6 +78,22 @@ func TestReadFaultCodes(t *testing.T) {
 			expectErr:     true,
 			validateCodes: false,
 		},
+		{
+			name: "blank",
+			md: metadata.Pairs(
+				faultcodesHeader, "",
+			),
+			expectErr:     true,
+			validateCodes: false,
+		},
+		{
+			name: "four commas ,,,,",
+			md: metadata.Pairs(
+				faultcodesHeader, ",,,,",
+			),
+			expectErr:     true,
+			validateCodes: false,
+		},
 	}
 
 	for _, tt := range tests {

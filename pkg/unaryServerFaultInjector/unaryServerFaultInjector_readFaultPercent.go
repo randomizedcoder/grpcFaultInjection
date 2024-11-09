@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"randomizedcoder/grpcFaultInjection/pkg/validate"
 )
 
 const (
@@ -33,7 +35,7 @@ func readFaultPercent(md *metadata.MD, debugLevel int) (found bool, faultPercent
 		}
 
 		var errV error
-		faultPercent, errV = validateFaultPercent(fp)
+		faultPercent, errV = validate.ValidatePercent(fp)
 		if errV != nil {
 			return found, 0, status.Error(codes.InvalidArgument,
 				"readfaultpercent validateFaultPercent error")

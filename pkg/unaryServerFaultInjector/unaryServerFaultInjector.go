@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"randomizedcoder/grpcFaultInjection/pkg/rand"
 )
 
 var (
@@ -47,7 +49,7 @@ func UnaryServerFaultInjector(debugLevel int) grpc.UnaryServerInterceptor {
 			return faultInject(&md, debugLevel)
 		}
 
-		if FastRandNInt() > faultPercent {
+		if rand.FastRandNInt() > faultPercent {
 			return noFaultInject(ctx, req, handler, debugLevel)
 		}
 
@@ -83,11 +85,11 @@ func faultInject(
 	var code codes.Code
 	switch len(faultCodes) {
 	case 0:
-		code = randomFaultCode()
+		code = rand.RandomFaultCode()
 	case 1:
 		code = faultCodes[0]
 	default:
-		code = randomSuppliedFaultCode(&faultCodes)
+		code = rand.RandomSuppliedFaultCode(&faultCodes)
 	}
 
 	if debugLevel > 10 {

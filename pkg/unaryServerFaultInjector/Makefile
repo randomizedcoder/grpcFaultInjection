@@ -2,24 +2,24 @@
 # /pkg/pkg/unaryServerFaultInjector/Makefile
 #
 
-test:
-	go test
+test: TestLogNoFaultRequest TestLogFaultRequest TestReadFaultCodes TestReadFaultPercent
 
 verbose:
 	go test -v
 
-mytests: TestValidateFaultPercent TestValidateCode TestReadFaultCodes TestReadFaultPercent
+TestLogNoFaultRequest:
+	go test -run TestLogNoFaultRequest -v
 
-TestValidateFaultPercent:
-	go test -run TestValidateFaultPercent -v
-
-TestValidateCode:
-	go test -run TestValidateCode -v
+TestLogFaultRequest:
+	go test -run TestLogFaultRequest -v
 
 TestReadFaultCodes:
 	go test -run TestReadFaultCodes -v
 
 TestReadFaultPercent:
 	go test -run TestReadFaultPercent -v
+
+FindTests:
+	grep -R "func Test" ./
 
 # end

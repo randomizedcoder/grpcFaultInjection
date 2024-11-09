@@ -1,4 +1,4 @@
-package unaryServerFaultInjector
+package rand
 
 import (
 	"testing"
@@ -11,10 +11,11 @@ import (
 // go test -run testRandomFaultCode -v
 func TestRandomFaultCode(t *testing.T) {
 
+	// this number is probably high
 	interations := 1000
 
 	for i := 0; i < interations; i++ {
-		code := randomFaultCode()
+		code := RandomFaultCode()
 		switch code {
 		case codes.OK:
 			t.Errorf("TestRandomFaultCode found code:%s == codes.ok", code)
@@ -96,7 +97,7 @@ func TestRandomSuppliedFaultCode(t *testing.T) {
 
 			for i := 0; i < tt.iterations; i++ {
 
-				code := randomSuppliedFaultCode(&tt.cs)
+				code := RandomSuppliedFaultCode(&tt.cs)
 
 				_, found := myMap[code]
 				if !found {

@@ -1,7 +1,9 @@
-// from:
-// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/server/main.go
-
 package main
+
+// This is a basic demontration of using the unaryServerFaultInjector
+
+// Originally adpated from:
+// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/server/main.go
 
 import (
 	"context"

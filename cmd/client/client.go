@@ -1,7 +1,9 @@
-// from:
-// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/client/main.go
-
 package main
+
+// This is a basic demontration of using the unaryClientFaultInjector
+
+// Originally adpated from:
+// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/client/main.go
 
 import (
 	"context"
@@ -40,6 +42,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	conf := unaryClientFaultInjector.UnaryClientInterceptorConfig{
+		ClientFaultPercent: *clientfaultpercent,
+		ServerFaultPercent: *faultpercent,
+		ServerFaultCodes:   *faultcodes,
+	}
+
+	if err := unaryClientFaultInjector.CheckConfig(conf); err != nil {
+		log.Fatal(err)
+	}
+
 	// Set up a connection to the server with service config and create the channel.
 	// However, the recommended approach is to fetch the retry configuration
 	// (which is part of the service config) from the name resolver rather than
@@ -49,14 +61,7 @@ func main() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(string(servicePolicyBytes)),
 		grpc.WithUnaryInterceptor(
-			unaryClientFaultInjector.UnaryClientFaultInjector(
-				unaryClientFaultInjector.UnaryClientInterceptorConfig{
-					ClientFaultPercent: *clientfaultpercent,
-					ServerFaultPercent: *faultpercent,
-					ServerFaultCodes:   *faultcodes,
-				},
-				*d,
-			),
+			unaryClientFaultInjector.UnaryClientFaultInjector(conf, *d),
 		),
 	)
 

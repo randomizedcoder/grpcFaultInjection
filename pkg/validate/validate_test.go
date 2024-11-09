@@ -1,8 +1,8 @@
-package unaryServerFaultInjector
+package validate
 
 import "testing"
 
-func TestValidateFaultPercent(t *testing.T) {
+func TestValidatePercent(t *testing.T) {
 	tests := []struct {
 		name      string
 		percent   int64
@@ -20,7 +20,7 @@ func TestValidateFaultPercent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateFaultPercent(tt.percent)
+			_, err := ValidatePercent(tt.percent)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("test: %s, expected error: %v, got: %v", tt.name, tt.expectErr, err != nil)
 			}
@@ -35,16 +35,19 @@ func TestValidateCode(t *testing.T) {
 		expectErr bool
 	}{
 		{"Valid, code 0", 0, false},
+		{"Valid, code 8", 8, false},
 		{"Valid, code 16", 16, false},
+		{"Invalid, code -1000", -1000, true},
 		{"Invalid, code -10", -10, true},
 		{"Invalid, code 17", 17, true},
-		{"Invalid, code 17", 100, true},
+		{"Invalid, code 100", 100, true},
+		{"Invalid, code 10000", 10000, true},
 		{"Invalid, max uint32 code", 4294967295, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateCode(tt.code)
+			_, err := ValidateCode(tt.code)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("test:%s, expected error: %v, got: %v", tt.name, tt.expectErr,
 					err != nil)

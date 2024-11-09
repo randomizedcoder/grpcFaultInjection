@@ -1,4 +1,4 @@
-package unaryServerFaultInjector
+package rand
 
 // This .go file holds the functions performing random functions
 // allowing "unsafe" to only be used in this file
@@ -30,11 +30,11 @@ func FastRandNInt() int {
 
 // randomFaultCode returns ANY random fault code ( 1-16 )
 // does NOT return code 0
-func randomFaultCode() (code codes.Code) {
+func RandomFaultCode() (code codes.Code) {
 	return codes.Code(FastRandN(maxCode) + 1)
 }
 
 // randomSuppliedFaultCode randomly selects one of the "faultcodes"
-func randomSuppliedFaultCode(cs *[]codes.Code) (code codes.Code) {
+func RandomSuppliedFaultCode(cs *[]codes.Code) (code codes.Code) {
 	return (*cs)[int(FastRandN(uint32(len(*cs))))]
 }

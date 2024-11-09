@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"randomizedcoder/grpcFaultInjection/pkg/validate"
 )
 
 const (
@@ -33,11 +35,12 @@ func readFaultCodes(md *metadata.MD) (cs []codes.Code, err error) {
 		if err != nil {
 			return cs, status.Error(codes.InvalidArgument, "faultcodes ParseInt error")
 		}
-		code, errV := validateCode(c)
+		code, errV := validate.ValidateCode(c)
 		if errV != nil {
 			return cs, status.Error(codes.InvalidArgument, "faultcodes validate error")
 		}
 		cs = append(cs, codes.Code(code))
 	}
+
 	return cs, nil
 }

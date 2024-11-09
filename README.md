@@ -99,26 +99,29 @@ https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
 Pleae keep in mind the ClientFaultPercent and ServerFaultPercent result in fault
 injection probabilities like the following:
 
-| ClientFaultPercent | ServerFaultPercent | Probability |
-|--------------------|--------------------|-------------|
-| 100                | 0                  | 0%          |
-| 0                  | 100                | 0%          |
-|                    |                    |             |
-| 10                 | 10                 | 1%          |
-| 50                 | 50                 | 25%         |
-| 100                | 50                 | 50%         |
-|                    |                    |             |
-| 100                | 10                 | 10%         |
-| 100                | 50                 | 50%         |
-| 50                 | 100                | 50%         |
-|                    |                    |             |
-| 100                | 100                | 100%        |
+| ClientFaultPercent | ServerFaultPercent | Probability | Comment                                  |
+|--------------------|--------------------|-------------|------------------------------------------|
+| 100                | 0                  | 0%          | Doesn't do much                          |
+| 0                  | 100                | 0%          |                                          |
+|                    |                    |             |                                          |
+| 100                | 10                 | 10%         | Recommended to use 100% on one end       |
+| 100                | 50                 | 50%         |                                          |
+| 10                 | 100                | 10%         |                                          |
+| 50                 | 100                | 50%         |                                          |
+|                    |                    |             |                                          |
+| 10                 | 10                 | 1%          | Tricky to reason about                   |
+| 50                 | 50                 | 25%         |                                          |
+| 100                | 50                 | 50%         |                                          |
+|                    |                    |             |                                          |
+| 100                | 100                | 100%        | Unlikely to be successful!               |
 
 ( test_test.go tries to follow this table )
 
 ## Examples
 
 ### ExampleA
+
+This is an example that will always return a GRPC error status, the status code will be random.
 
 | Variable           | Value             | Description                                                       |
 |--------------------|-------------------|-------------------------------------------------------------------|
@@ -148,6 +151,8 @@ injection probabilities like the following:
 ```
 
 ### ExampleB
+This is an example which will always return code 14 = Unavailable
+
 | Variable           | Value | Description                                                                 |
 |--------------------|-------|-----------------------------------------------------------------------------|
 | clientfaultpercent | 100   | The client always inserts the headers                                       |
@@ -176,13 +181,14 @@ injection probabilities like the following:
 
 ### ExampleC
 
+This is an example which will always return one of the error codes listed (10, 12, or 14)
+
 | Variable           | Value    | Description                                                                       |
 |--------------------|----------|-----------------------------------------------------------------------------------|
 | clientfaultpercent | 100      | The client always inserts the headers                                             |
 | faultpercent       | 100      | The client header instructs the server to always inject the fault                 |
 | failcodes          | 10,12,14 | The server will randomly return one of the codes 10, 12, or 14                    |
 | Command            |          | ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 -faultcodes 10,12,14 |
-
 
 ```
 [das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 --faultcodes 10,12,14
@@ -267,9 +273,15 @@ This is probably not really required, and it's definitely slow, but you could ar
 
 The point of these tests is really to make sure somebody can confirm this library works, so I hope it does the job.
 
+### Test Functions
+
+All the functions are covered with tests.
+
 ### Test_test code
 
-There are serveral tests, loosly following the "Config Matrix" section above
+There are serveral tests, loosly following the "Config Matrix" section above.
+
+The probabilitic nature of the tests makes it tricky not to be flakey.
 
 https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/test_test/test_test.go
 
@@ -302,11 +314,11 @@ Benchmark 1: go test -v
   Range (min … max):   452.5 ms … 759.2 ms    100 runs
 
   Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
-  ```
+```
 
 
 ## Todo
 
 - Streaming inteerceptors
-- Mocked tests?
+- Mocked tests rather than real GRPC client+server?
 - Updates based on feedback
