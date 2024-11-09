@@ -2,6 +2,7 @@ package unaryClientFaultInjector
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -50,47 +51,66 @@ func UnaryClientFaultInjector(config UnaryClientInterceptorConfig, debugLevel in
 		invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 
 		if config.ClientFaultPercent <= 0 {
-			success.Add(1)
-			return invoker(ctx, method, req, reply, cc, opts...)
+			return noFaultInject(ctx, debugLevel, method, req, reply, cc, invoker, opts...)
+		}
+
+		if config.ClientFaultPercent == 100 {
+			return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
 		}
 
 		r := FastRandN(100)
 		if r > uint32(config.ClientFaultPercent) {
-			success.Add(1)
-			return invoker(ctx, method, req, reply, cc, opts...)
+			return noFaultInject(ctx, debugLevel, method, req, reply, cc, invoker, opts...)
 		}
 
-		f := fault.Add(1)
-		s := success.Load()
-
-		if debugLevel > 10 {
-			logRequest(s, f)
-		}
-
-		// https://grpc.io/docs/guides/metadata/
-		// https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/client/main.go
-		var md metadata.MD
-		if config.ServerFaultCodes == "" {
-			md = metadata.Pairs(
-				faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
-			)
-		} else {
-			md = metadata.Pairs(
-				faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
-				faultcodesHeader, config.ServerFaultCodes,
-			)
-		}
-		ctxMD := metadata.NewOutgoingContext(ctx, md)
-
-		return invoker(ctxMD, method, req, reply, cc, opts...)
-
+		return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
 	}
 }
 
-func logRequest(s uint64, f uint64) {
-	if s > 0 {
-		logger.Printf("request success:%d fault:%d ~= %.3f", s, f, float64(f)/float64(s))
-	} else {
-		logger.Printf("request success:%d fault:%d", s, f)
+func noFaultInject(ctx context.Context, debugLevel int, method string, req, reply interface{}, cc *grpc.ClientConn,
+	invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+
+	s := success.Add(1)
+	f := fault.Load()
+
+	if debugLevel > 10 {
+		logRequest(s, f)
 	}
+
+	return invoker(ctx, method, req, reply, cc, opts...)
+}
+
+func faultInject(ctx context.Context, config UnaryClientInterceptorConfig, debugLevel int,
+	method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+
+	f := fault.Add(1)
+	s := success.Load()
+
+	if debugLevel > 10 {
+		logRequest(s, f)
+	}
+
+	// https://grpc.io/docs/guides/metadata/
+	// https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/client/main.go
+	var md metadata.MD
+	if config.ServerFaultCodes == "" {
+		md = metadata.Pairs(
+			faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
+		)
+	} else {
+		md = metadata.Pairs(
+			faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
+			faultcodesHeader, config.ServerFaultCodes,
+		)
+	}
+	ctxMD := metadata.NewOutgoingContext(ctx, md)
+
+	return invoker(ctxMD, method, req, reply, cc, opts...)
+}
+
+func logRequest(s uint64, f uint64) string {
+	if s == 0 {
+		return fmt.Sprintf("request success:%d fault:%d", s, f)
+	}
+	return fmt.Sprintf("request success:%d fault:%d ~= %.3f", s, f, float64(f)/float64(s))
 }
