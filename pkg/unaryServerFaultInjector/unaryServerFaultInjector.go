@@ -44,7 +44,7 @@ var (
 )
 
 // https://pkg.go.dev/google.golang.org/grpc?utm_source=godoc#UnaryServerInterceptor
-func UnaryServerFaultInjector(FaultureRate int, debugLevel int) grpc.UnaryServerInterceptor {
+func UnaryServerFaultInjector(debugLevel int) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		var (
 			code codes.Code
@@ -57,17 +57,30 @@ func UnaryServerFaultInjector(FaultureRate int, debugLevel int) grpc.UnaryServer
 			return nil, errMetadata
 		}
 
-		fp, errG := readFaultPercent(FaultureRate, &md)
+		fp, errG := readFaultPercent(&md, debugLevel)
 		if errG != nil {
 			return nil, errG
 		}
 
-		rp := FastRandN(100)
-
-		if rp > uint32(fp) {
-			f := fault.Load()
+		if fp <= 0 {
 			s := success.Add(1)
-			logRequest(s, f, code)
+			f := fault.Load()
+			if debugLevel > 11 {
+				logRequest(s, f, code)
+			}
+
+			return handler(ctx, req)
+		}
+
+		r := FastRandN(100)
+
+		if r > uint32(fp) {
+			s := success.Add(1)
+			f := fault.Load()
+			if debugLevel > 11 {
+				logRequest(s, f, code)
+			}
+
 			return handler(ctx, req)
 		}
 
@@ -93,9 +106,9 @@ func UnaryServerFaultInjector(FaultureRate int, debugLevel int) grpc.UnaryServer
 
 		return nil, status.Errorf(
 			code,
-			"intercept fault code:%d rp:%d success:%d fault:%d",
+			"intercept fault code:%d r:%d success:%d fault:%d",
 			uint32(code),
-			rp,
+			r,
 			s,
 			f)
 
@@ -114,7 +127,7 @@ func logRequest(s uint64, f uint64, code codes.Code) {
 // percentage needs to be a integer between 0-100
 // e.g. faultpercent = 10 ( 10% )
 // e.g. faultpercent = 90 ( 90% )
-func readFaultPercent(FaultureRate int, md *metadata.MD) (int, error) {
+func readFaultPercent(md *metadata.MD, debugLevel int) (int, error) {
 
 	// metadata keys are always lower case
 	// https://github.com/grpc/grpc-go/blob/v1.68.0/metadata/metadata.go#L207
@@ -127,11 +140,13 @@ func readFaultPercent(FaultureRate int, md *metadata.MD) (int, error) {
 		if errV != nil {
 			return 0, status.Error(codes.InvalidArgument, "readfaultpercent validateFaultPercent error")
 		}
-		logger.Printf("readFaultPercent:%d from metadata:\n", i)
+		if debugLevel > 10 {
+			logger.Printf("readFaultPercent:%d from metadata:\n", i)
+		}
 
 		return int(i), nil
 	}
-	return FaultureRate, nil
+	return 0, nil
 }
 
 // validateFaultPercent ensure the percentage is between 0-100 inclusive

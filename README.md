@@ -10,6 +10,12 @@ fault injection
 This library is designed to allow the client to control the fault injection,
 and is generally designed to allow testing of error handling code
 
+Hopefully this library is easy to integrate into an existing GRPC eco-system,
+and will provide value for failure mode testing
+
+## Overview Diagram
+
+<img src="./docs/Screenshot from 2024-11-08 18-49-32.png" alt="xtcp_sampling diagram" width="100%" height="100%"/>
 
 
 ## Example implementation
@@ -37,6 +43,8 @@ type UnaryClientInterceptorConfig struct {
 ### ClientFaultPercent
 The client can be configured to randomly trigger the fault headers to be injected.
 
+Examples
+
 | ClientFaultPercent | Description                                                  |
 | ------------------ | ------------------------------------------------------------ |
 | 10                 | 10% of the time the metadata(headers) are injected           |
@@ -49,6 +57,8 @@ The client can make requests with "faultpercent" and "faultcodes" metadata(heade
 The configuration ServerFaultPercent injects the "faultpercent" header which is
 passed to the server.
 
+Examples
+
 | ServerFaultPercent | Description                                                     |
 | ------------------ | --------------------------------------------------------------- |
 | 50                 | 50% there is a 50% chance that the server will return a fault   |
@@ -56,6 +66,8 @@ passed to the server.
 | 100                | 100% of the time the server will always return a fault = Always |
 
 The client adds the "faultpercent" header which is passed to the server:
+
+Examples
 
 | "faultpercent"     | Description                                                     |
 | ------------------ | --------------------------------------------------------------- |
@@ -69,6 +81,8 @@ The configuration ServerFaultCodes injects the "faultcodes" header which is
 passed to the server.
 
 If "faultcodes" is NOT supplied, any random valid GRPC status code, except zero (0), is returned
+
+Examples
 
 | "faultcodes  "     | Description                                                         |
 | ------------------ | ------------------------------------------------------------------- |
@@ -87,20 +101,34 @@ injection probabilities like the following:
 
 | ClientFaultPercent | ServerFaultPercent | Probability |
 |--------------------|--------------------|-------------|
+| 100                | 0                  | 0%          |
+| 0                  | 100                | 0%          |
+|                    |                    |             |
 | 10                 | 10                 | 1%          |
 | 50                 | 50                 | 25%         |
 | 100                | 50                 | 50%         |
+|                    |                    |             |
+| 100                | 10                 | 10%         |
+| 100                | 50                 | 50%         |
 | 50                 | 100                | 50%         |
+|                    |                    |             |
 | 100                | 100                | 100%        |
+
+( test_test.go tries to follow this table )
 
 ## Examples
 
 ### ExampleA
-clientfaultpercent = 100 ( client always inserts the headers )
-failpercent = 100 ( the headers instruct the server to always inject the fault )
-failcodes is not specified, so we get any random status code
-```
 
+| Variable           | Value             | Description                                                       |
+|--------------------|-------------------|-------------------------------------------------------------------|
+| clientfaultpercent | 100               | The client always inserts the headers                             |
+| faultpercent       | 100               | The client header instructs the server to always inject the fault |
+| failcodes          | < not specified > | Random response code between 1-16 inclusive                       |
+| Command            |                   | ./client --loops 5 -clientfaultpercent 100 -faultpercent 100      |
+
+
+```
 [das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client --loops 5 -clientfaultpercent 100 -faultpercent 100
 2024/11/08 11:29:39.002621 request success:0 fault:1
 2024/11/08 11:29:39 i:0 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:53 success:54 fault:57
@@ -120,9 +148,13 @@ failcodes is not specified, so we get any random status code
 ```
 
 ### ExampleB
-clientfaultpercent = 100 ( client always inserts the headers )
-failpercent = 100 ( the headers instruct the server to always inject the fault )
-faultcodes = 14 (unavailable), so the server will only return code 14
+| Variable           | Value | Description                                                                 |
+|--------------------|-------|-----------------------------------------------------------------------------|
+| clientfaultpercent | 100   | The client always inserts the headers                                       |
+| faultpercent       | 100   | The client header instructs the server to always inject the fault           |
+| failcodes          | 14    | Response code is 14                                                         |
+| Command            |       | ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 -faultcodes 14 |
+
 ```
 [das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 --faultcodes 14
 2024/11/08 11:31:03.541534 request success:0 fault:1
@@ -143,11 +175,16 @@ faultcodes = 14 (unavailable), so the server will only return code 14
 ```
 
 ### ExampleC
-clientfaultpercent = 100 ( client always inserts the headers )
-failpercent = 100 ( the headers instruct the server to always inject the fault )
-faultcodes = 10,12,14, so the server will randomly return one of the codes 10, 12, or 14
-```
 
+| Variable           | Value    | Description                                                                       |
+|--------------------|----------|-----------------------------------------------------------------------------------|
+| clientfaultpercent | 100      | The client always inserts the headers                                             |
+| faultpercent       | 100      | The client header instructs the server to always inject the fault                 |
+| failcodes          | 10,12,14 | The server will randomly return one of the codes 10, 12, or 14                    |
+| Command            |          | ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 -faultcodes 10,12,14 |
+
+
+```
 [das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 --faultcodes 10,12,14
 2024/11/08 11:32:29.397913 request success:0 fault:1
 2024/11/08 11:32:29 i:0 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:4 success:54 fault:67
@@ -191,13 +228,13 @@ content-type: application/grpc
 user-agent: grpc-go/1.68.0
 te: trailers
 grpc-timeout: 995078u
-faultpercent: 100
-faultcodes: 10,12,14
+faultpercent: 100                   <---- injected header
+faultcodes: 10,12,14                <---- injected header
 
-:status: 200
+:status: 200                        <--- don't be tricked. this is a fault!
 content-type: application/grpc
 grpc-status: 10
-grpc-message: intercept fault code:10 rp:96 success:0 fault:1
+grpc-message: intercept fault code:10 rp:96 success:0 fault:1    <--- fault
 ```
 
 
@@ -209,6 +246,8 @@ https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/client/ma
 
 ## GRPC Interceptors
 
+See also the GRPC interceptor documentation:
+
 UnaryClientInterceptor
 
 https://pkg.go.dev/google.golang.org/grpc?utm_source=godoc#UnaryClientInterceptor
@@ -217,5 +256,57 @@ UnaryServerInterceptor
 
 https://pkg.go.dev/google.golang.org/grpc?utm_source=godoc#UnaryServerInterceptor
 
+
+## Tests
+
+Disclaimer:
+
+I wasn't sure about the best way to write the tests via mocking, or whatever, so the tests are pretty expensive.
+These tests are running up the GRPC server, and running real GPRC requests across the loopback interface.
+This is probably not really required, and it's definitely slow, but you could argue it's pretty realistic.
+
+The point of these tests is really to make sure somebody can confirm this library works, so I hope it does the job.
+
+### Test_test code
+
+There are serveral tests, loosly following the "Config Matrix" section above
+
+https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/test_test/test_test.go
+
+### Reliability of tests
+
+To ensrue the tests aren't flakey, the test_test Makefile ( https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/test_test/Makefile ),
+includes a couple of shortcuts
+
+```
+make loop             <--- bash script to loop over the tests 100 times to make sure the test don't fail
+make hyperfine        <--- performace measure the tests
+make hyperfineDebug   <--- performace measure the tests, in debug mode
+```
+
+If you want to measure the performance of the tests, try using "hyperfine"
+
+( https://github.com/sharkdp/hyperfine )
+
+On nixOS, just do "nix-shell hyperfine" "make hyperfine"
+```
+[das@t:~/Downloads/grpcFaultInjection/cmd/test_test]$ nix-shell -p hyperfine
+
+[nix-shell:~/Downloads/grpcFaultInjection/cmd/test_test]$ make hyperfine
+hyperfine \
+	--ignore-failure \
+	--runs 100 \
+	'go test -v'
+Benchmark 1: go test -v
+  Time (mean ± σ):     521.9 ms ±  77.6 ms    [User: 820.7 ms, System: 283.6 ms]
+  Range (min … max):   452.5 ms … 759.2 ms    100 runs
+
+  Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
+  ```
+
+
 ## Todo
-Streaming version
+
+- Streaming inteerceptors
+- Mocked tests?
+- Updates based on feedback

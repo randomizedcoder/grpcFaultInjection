@@ -41,8 +41,7 @@ func (s echoServer) UnaryEcho(_ context.Context, req *pb.EchoRequest) (*pb.EchoR
 func main() {
 
 	port := flag.Int("port", 50052, "port number")
-	faultpercent := flag.Int("faultpercent", 50, "faultpercent")
-	d := flag.Int("d", 11, "debugLevel.  > 10 for output")
+	debugLevel := flag.Int("debugLevel", 11, "debugLevel.  > 10 for output")
 
 	flag.Parse()
 
@@ -57,7 +56,7 @@ func main() {
 
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(
-			unaryServerFaultInjector.UnaryServerFaultInjector(*faultpercent, *d),
+			unaryServerFaultInjector.UnaryServerFaultInjector(*debugLevel),
 		),
 	)
 

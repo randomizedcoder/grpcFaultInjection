@@ -82,6 +82,7 @@ func main() {
 		)
 		if err != nil {
 			log.Printf("i:%d UnaryEcho error: %v", i, err)
+			continue
 		}
 		log.Printf("i:%d UnaryEcho reply: %v", i, reply)
 	}

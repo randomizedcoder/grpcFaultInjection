@@ -49,8 +49,12 @@ func UnaryClientFaultInjector(config UnaryClientInterceptorConfig, debugLevel in
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn,
 		invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 
-		r := FastRandN(100)
+		if config.ClientFaultPercent <= 0 {
+			success.Add(1)
+			return invoker(ctx, method, req, reply, cc, opts...)
+		}
 
+		r := FastRandN(100)
 		if r > uint32(config.ClientFaultPercent) {
 			success.Add(1)
 			return invoker(ctx, method, req, reply, cc, opts...)
@@ -65,10 +69,17 @@ func UnaryClientFaultInjector(config UnaryClientInterceptorConfig, debugLevel in
 
 		// https://grpc.io/docs/guides/metadata/
 		// https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/client/main.go
-		md := metadata.Pairs(
-			faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
-			faultcodesHeader, config.ServerFaultCodes,
-		)
+		var md metadata.MD
+		if config.ServerFaultCodes == "" {
+			md = metadata.Pairs(
+				faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
+			)
+		} else {
+			md = metadata.Pairs(
+				faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
+				faultcodesHeader, config.ServerFaultCodes,
+			)
+		}
 		ctxMD := metadata.NewOutgoingContext(ctx, md)
 
 		return invoker(ctxMD, method, req, reply, cc, opts...)
