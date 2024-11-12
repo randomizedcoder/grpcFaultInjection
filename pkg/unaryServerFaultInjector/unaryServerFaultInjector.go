@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	count   atomic.Uint64
 	fault   atomic.Uint64
 	success atomic.Uint64
 
@@ -29,6 +30,8 @@ var (
 func UnaryServerFaultInjector(debugLevel int) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 
+		counter := count.Add(1)
+
 		// https://grpc.io/docs/guides/metadata/
 		// https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/server/main.go
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -36,29 +39,29 @@ func UnaryServerFaultInjector(debugLevel int) grpc.UnaryServerInterceptor {
 			return nil, errMetadata
 		}
 
-		found, faultPercent, err := readFaultPercent(&md, debugLevel)
-		if err != nil {
-			return nil, err
+		var (
+			foundModulus bool
+			faultModulus uint64
+			errM         error
+		)
+		foundModulus, faultModulus, errM = readFaultModulus(&md, debugLevel)
+		if errM != nil {
+			return nil, errM
 		}
 
-		if !found {
+		if foundModulus {
+			if counter%faultModulus == 0 {
+				return faultInject(counter, &md, debugLevel)
+			}
 			return noFaultInject(ctx, req, handler, debugLevel)
 		}
 
-		if faultPercent == 100 {
-			return faultInject(&md, debugLevel)
-		}
-
-		if rand.FastRandNInt() > faultPercent {
-			return noFaultInject(ctx, req, handler, debugLevel)
-		}
-
-		return faultInject(&md, debugLevel)
-
+		return faultPercentInject(ctx, req, handler, counter, &md, debugLevel)
 	}
 }
 
-func noFaultInject(ctx context.Context, req any, handler grpc.UnaryHandler, debugLevel int) (any, error) {
+func noFaultInject(
+	ctx context.Context, req any, handler grpc.UnaryHandler, debugLevel int) (any, error) {
 
 	s := success.Add(1)
 	f := fault.Load()
@@ -70,9 +73,42 @@ func noFaultInject(ctx context.Context, req any, handler grpc.UnaryHandler, debu
 	return handler(ctx, req)
 }
 
-func faultInject(
+func faultPercentInject(
+	ctx context.Context,
+	req any,
+	handler grpc.UnaryHandler,
+	counter uint64,
 	md *metadata.MD,
 	debugLevel int) (any, error) {
+
+	var (
+		foundPercent bool
+		faultPercent int
+		errP         error
+	)
+
+	foundPercent, faultPercent, errP = readFaultPercent(md, debugLevel)
+	if errP != nil {
+		return nil, errP
+	}
+
+	if !foundPercent {
+		return noFaultInject(ctx, req, handler, debugLevel)
+	}
+
+	if faultPercent == 100 {
+		return faultInject(counter, md, debugLevel)
+	}
+
+	if rand.FastRandNInt() > faultPercent {
+		return noFaultInject(ctx, req, handler, debugLevel)
+	}
+
+	return faultInject(counter, md, debugLevel)
+}
+
+func faultInject(
+	counter uint64, md *metadata.MD, debugLevel int) (any, error) {
 
 	f := fault.Add(1)
 	s := success.Load()
@@ -98,6 +134,6 @@ func faultInject(
 
 	return nil, status.Errorf(
 		code,
-		"intercept fault code:%d success:%d fault:%d",
-		uint32(code), s, f)
+		"intercept fault code:%d counter:%d success:%d fault:%d",
+		uint32(code), counter, s, f)
 }

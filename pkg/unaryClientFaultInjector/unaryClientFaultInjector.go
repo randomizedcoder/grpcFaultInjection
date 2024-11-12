@@ -16,17 +16,21 @@ import (
 )
 
 const (
+	faultmodulusHeader = "faultmodulus"
 	faultpercentHeader = "faultpercent"
 	faultcodesHeader   = "faultcodes"
 )
 
 type UnaryClientInterceptorConfig struct {
+	ClientFaultModulus int
 	ClientFaultPercent int
+	ServerFaultModulus int
 	ServerFaultPercent int
 	ServerFaultCodes   string
 }
 
 var (
+	count   atomic.Uint64
 	fault   atomic.Uint64
 	success atomic.Uint64
 
@@ -46,6 +50,8 @@ func UnaryClientFaultInjector(config UnaryClientInterceptorConfig, debugLevel in
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn,
 		invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 
+		counter := count.Add(1)
+
 		once.Do(func() {
 			err := CheckConfig(config)
 			if err != nil {
@@ -57,6 +63,10 @@ func UnaryClientFaultInjector(config UnaryClientInterceptorConfig, debugLevel in
 		if configError.Load() > 0 {
 			c := configError.Add(1)
 			return fmt.Errorf("config error:%d", c)
+		}
+
+		if counter%uint64(config.ClientFaultModulus) == 0 {
+			return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
 		}
 
 		if config.ClientFaultPercent == 100 {
@@ -96,9 +106,16 @@ func faultInject(ctx context.Context, config UnaryClientInterceptorConfig, debug
 
 	// https://grpc.io/docs/guides/metadata/
 	// https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/client/main.go
-	md := metadata.Pairs(
-		faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
-	)
+	var md metadata.MD
+	if config.ServerFaultModulus > 0 {
+		md = metadata.Pairs(
+			faultmodulusHeader, strconv.FormatInt(int64(config.ServerFaultModulus), 10),
+		)
+	} else {
+		md = metadata.Pairs(
+			faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
+		)
+	}
 
 	if config.ServerFaultCodes != "" {
 		md.Append(faultcodesHeader, config.ServerFaultCodes)

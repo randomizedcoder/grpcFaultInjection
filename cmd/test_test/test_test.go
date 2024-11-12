@@ -41,7 +41,7 @@ var (
 	success atomic.Uint64
 )
 
-func TestTest(t *testing.T) {
+func TestPercents(t *testing.T) {
 
 	address := "localhost:50052"
 	policy := "grpc_client_policy.yaml"

@@ -2,10 +2,16 @@
 # /pkg/pkg/validate/Makefile
 #
 
-test: TestValidatePercent TestValidateCode
+test: TestValidateModulus TestValidatePercent TestValidateCode
+
+simpleTest:
+	go test .
 
 verbose:
 	go test -v
+
+TestValidateModulus:
+	go test -run TestValidateModulus -v
 
 TestValidatePercent:
 	go test -run TestValidatePercent -v

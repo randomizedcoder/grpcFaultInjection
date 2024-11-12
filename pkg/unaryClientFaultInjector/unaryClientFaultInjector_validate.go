@@ -13,8 +13,14 @@ import (
 // in the GRPC client
 func CheckConfig(config UnaryClientInterceptorConfig) error {
 
+	if _, err := validate.ValidateModulus(int64(config.ClientFaultModulus)); err != nil {
+		return fmt.Errorf("config.ClientFaultModulus error: %w", err)
+	}
 	if _, err := validate.ValidatePercent(int64(config.ClientFaultPercent)); err != nil {
 		return fmt.Errorf("config.ClientFaultPercent error: %w", err)
+	}
+	if _, err := validate.ValidatePercent(int64(config.ServerFaultModulus)); err != nil {
+		return fmt.Errorf("config.ServerFaultModulus error: %w", err)
 	}
 	if _, err := validate.ValidatePercent(int64(config.ServerFaultPercent)); err != nil {
 		return fmt.Errorf("config.ServerFaultPercent error: %w", err)

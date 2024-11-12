@@ -23,10 +23,12 @@ var (
 	loops              = flag.Int("loops", 10, "loops")
 	addr               = flag.String("addr", "localhost:50052", "the address to connect to")
 	policy             = flag.String("policy", "grpc_client_policy.yaml", "filename of the grpc client policy.yaml")
+	clientfaultmodulus = flag.Int("clientfaultmodulus", 2, "clientfaultmodulus integers only between 1-10,000")
 	clientfaultpercent = flag.Int("clientfaultpercent", 50, "clientfaultpercent integers only between 0-100")
+	faultmodulus       = flag.Int("faultmodulus", 2, "faultmodulus integers only between 1-10,000")
 	faultpercent       = flag.Int("faultpercent", 50, "faultpercent integers only between 0-100")
 	faultcodes         = flag.String("faultcodes", "4,8,14", "faultcodes header to insert. single code, or comma seperated")
-	d                  = flag.Int("d", 11, "debugLevel.  > 10 for output")
+	debugLevel         = flag.Int("debugLevel", 11, "debugLevel. > 10 for output")
 )
 
 func main() {
@@ -43,7 +45,9 @@ func main() {
 	}
 
 	conf := unaryClientFaultInjector.UnaryClientInterceptorConfig{
+		ClientFaultModulus: *clientfaultmodulus,
 		ClientFaultPercent: *clientfaultpercent,
+		ServerFaultModulus: *faultmodulus,
 		ServerFaultPercent: *faultpercent,
 		ServerFaultCodes:   *faultcodes,
 	}
@@ -61,7 +65,7 @@ func main() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(string(servicePolicyBytes)),
 		grpc.WithUnaryInterceptor(
-			unaryClientFaultInjector.UnaryClientFaultInjector(conf, *d),
+			unaryClientFaultInjector.UnaryClientFaultInjector(conf, *debugLevel),
 		),
 	)
 

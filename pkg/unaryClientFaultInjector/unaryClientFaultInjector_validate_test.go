@@ -14,7 +14,9 @@ func TestCheckConfig(t *testing.T) {
 		{
 			name: "valid, clean 1",
 			conf: UnaryClientInterceptorConfig{
+				ClientFaultModulus: 1,
 				ClientFaultPercent: 1,
+				ServerFaultModulus: 1,
 				ServerFaultPercent: 1,
 				ServerFaultCodes:   "10",
 			},
@@ -23,7 +25,9 @@ func TestCheckConfig(t *testing.T) {
 		{
 			name: "valid, clean 10",
 			conf: UnaryClientInterceptorConfig{
+				ClientFaultModulus: 10,
 				ClientFaultPercent: 10,
+				ServerFaultModulus: 10,
 				ServerFaultPercent: 10,
 				ServerFaultCodes:   "10",
 			},
@@ -32,7 +36,9 @@ func TestCheckConfig(t *testing.T) {
 		{
 			name: "valid, clean 100",
 			conf: UnaryClientInterceptorConfig{
+				ClientFaultModulus: 100,
 				ClientFaultPercent: 100,
+				ServerFaultModulus: 100,
 				ServerFaultPercent: 100,
 				ServerFaultCodes:   "10,12,14",
 			},
@@ -41,7 +47,9 @@ func TestCheckConfig(t *testing.T) {
 		{
 			name: "invalid, clean 0",
 			conf: UnaryClientInterceptorConfig{
+				ClientFaultModulus: 0,
 				ClientFaultPercent: 0,
+				ServerFaultModulus: 0,
 				ServerFaultPercent: 0,
 				ServerFaultCodes:   "10,12,14",
 			},
@@ -50,8 +58,20 @@ func TestCheckConfig(t *testing.T) {
 		{
 			name: "invalid, clean 10000",
 			conf: UnaryClientInterceptorConfig{
+				ClientFaultModulus: 10000,
 				ClientFaultPercent: 10000,
+				ServerFaultModulus: 10000,
 				ServerFaultPercent: 10000,
+				ServerFaultCodes:   "10,12,14",
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid, clean client modulus -100",
+			conf: UnaryClientInterceptorConfig{
+				ClientFaultModulus: -100,
+				ClientFaultPercent: 100,
+				ServerFaultPercent: 100,
 				ServerFaultCodes:   "10,12,14",
 			},
 			expectErr: true,
@@ -60,6 +80,16 @@ func TestCheckConfig(t *testing.T) {
 			name: "invalid, clean client -100",
 			conf: UnaryClientInterceptorConfig{
 				ClientFaultPercent: -100,
+				ServerFaultPercent: 100,
+				ServerFaultCodes:   "10,12,14",
+			},
+			expectErr: true,
+		},
+		{
+			name: "invalid, clean server modulus -100",
+			conf: UnaryClientInterceptorConfig{
+				ClientFaultPercent: 100,
+				ServerFaultModulus: -100,
 				ServerFaultPercent: 100,
 				ServerFaultCodes:   "10,12,14",
 			},
