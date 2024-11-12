@@ -1,7 +1,9 @@
-// from:
-// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/client/main.go
-
 package main
+
+// This is a basic demontration of using the unaryClientFaultInjector
+
+// Originally adpated from:
+// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/client/main.go
 
 import (
 	"context"
@@ -21,10 +23,12 @@ var (
 	loops              = flag.Int("loops", 10, "loops")
 	addr               = flag.String("addr", "localhost:50052", "the address to connect to")
 	policy             = flag.String("policy", "grpc_client_policy.yaml", "filename of the grpc client policy.yaml")
+	clientfaultmodulus = flag.Int("clientfaultmodulus", 2, "clientfaultmodulus integers only between 1-10,000")
 	clientfaultpercent = flag.Int("clientfaultpercent", 50, "clientfaultpercent integers only between 0-100")
+	faultmodulus       = flag.Int("faultmodulus", 2, "faultmodulus integers only between 1-10,000")
 	faultpercent       = flag.Int("faultpercent", 50, "faultpercent integers only between 0-100")
 	faultcodes         = flag.String("faultcodes", "4,8,14", "faultcodes header to insert. single code, or comma seperated")
-	d                  = flag.Int("d", 11, "debugLevel.  > 10 for output")
+	debugLevel         = flag.Int("debugLevel", 11, "debugLevel. > 10 for output")
 )
 
 func main() {
@@ -40,6 +44,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	conf := unaryClientFaultInjector.UnaryClientInterceptorConfig{
+		ClientFaultModulus: *clientfaultmodulus,
+		ClientFaultPercent: *clientfaultpercent,
+		ServerFaultModulus: *faultmodulus,
+		ServerFaultPercent: *faultpercent,
+		ServerFaultCodes:   *faultcodes,
+	}
+
+	if err := unaryClientFaultInjector.CheckConfig(conf); err != nil {
+		log.Fatal(err)
+	}
+
 	// Set up a connection to the server with service config and create the channel.
 	// However, the recommended approach is to fetch the retry configuration
 	// (which is part of the service config) from the name resolver rather than
@@ -49,14 +65,7 @@ func main() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(string(servicePolicyBytes)),
 		grpc.WithUnaryInterceptor(
-			unaryClientFaultInjector.UnaryClientFaultInjector(
-				unaryClientFaultInjector.UnaryClientInterceptorConfig{
-					ClientFaultPercent: *clientfaultpercent,
-					ServerFaultPercent: *faultpercent,
-					ServerFaultCodes:   *faultcodes,
-				},
-				*d,
-			),
+			unaryClientFaultInjector.UnaryClientFaultInjector(conf, *debugLevel),
 		),
 	)
 
@@ -82,6 +91,7 @@ func main() {
 		)
 		if err != nil {
 			log.Printf("i:%d UnaryEcho error: %v", i, err)
+			continue
 		}
 		log.Printf("i:%d UnaryEcho reply: %v", i, reply)
 	}

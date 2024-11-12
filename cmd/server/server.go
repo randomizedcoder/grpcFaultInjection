@@ -1,7 +1,9 @@
-// from:
-// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/server/main.go
-
 package main
+
+// This is a basic demontration of using the unaryServerFaultInjector
+
+// Originally adpated from:
+// https://github.com/grpc/grpc-go/blob/master/examples/features/retry/server/main.go
 
 import (
 	"context"
@@ -41,8 +43,7 @@ func (s echoServer) UnaryEcho(_ context.Context, req *pb.EchoRequest) (*pb.EchoR
 func main() {
 
 	port := flag.Int("port", 50052, "port number")
-	faultpercent := flag.Int("faultpercent", 50, "faultpercent")
-	d := flag.Int("d", 11, "debugLevel.  > 10 for output")
+	debugLevel := flag.Int("debugLevel", 11, "debugLevel.  > 10 for output")
 
 	flag.Parse()
 
@@ -57,7 +58,7 @@ func main() {
 
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(
-			unaryServerFaultInjector.UnaryServerFaultInjector(*faultpercent, *d),
+			unaryServerFaultInjector.UnaryServerFaultInjector(*debugLevel),
 		),
 	)
 
