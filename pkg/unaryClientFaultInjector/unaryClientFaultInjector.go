@@ -21,14 +21,6 @@ const (
 	faultcodesHeader   = "faultcodes"
 )
 
-type UnaryClientInterceptorConfig struct {
-	ClientFaultModulus int
-	ClientFaultPercent int
-	ServerFaultModulus int
-	ServerFaultPercent int
-	ServerFaultCodes   string
-}
-
 var (
 	count   atomic.Uint64
 	fault   atomic.Uint64
@@ -65,16 +57,28 @@ func UnaryClientFaultInjector(config UnaryClientInterceptorConfig, debugLevel in
 			return fmt.Errorf("config error:%d", c)
 		}
 
-		if counter%uint64(config.ClientFaultModulus) == 0 {
-			return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
-		}
+		switch config.Client.Mode {
+		case Modulus:
+			if counter%uint64(config.Client.Value) == 0 {
 
-		if config.ClientFaultPercent == 100 {
-			return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
-		}
+				if debugLevel > 10 {
+					logger.Printf("UnaryClientFaultInjector counter:%d", counter)
+				}
 
-		if rand.FastRandNInt() > config.ClientFaultPercent {
+				return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
+			}
 			return noFaultInject(ctx, debugLevel, method, req, reply, cc, invoker, opts...)
+
+		case Percent:
+			if config.Client.Value == 100 {
+				return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
+			}
+
+			if rand.FastRandNInt() > config.Client.Value {
+				return noFaultInject(ctx, debugLevel, method, req, reply, cc, invoker, opts...)
+			}
+		default:
+			return fmt.Errorf("config error: must have modulus or percent")
 		}
 
 		return faultInject(ctx, config, debugLevel, method, req, reply, cc, invoker, opts...)
@@ -107,18 +111,24 @@ func faultInject(ctx context.Context, config UnaryClientInterceptorConfig, debug
 	// https://grpc.io/docs/guides/metadata/
 	// https://github.com/grpc/grpc-go/blob/master/examples/features/metadata/client/main.go
 	var md metadata.MD
-	if config.ServerFaultModulus > 0 {
+
+	switch config.Server.Mode {
+	case Modulus:
 		md = metadata.Pairs(
-			faultmodulusHeader, strconv.FormatInt(int64(config.ServerFaultModulus), 10),
+			faultmodulusHeader, strconv.FormatInt(int64(config.Server.Value), 10),
 		)
-	} else {
+	case Percent:
 		md = metadata.Pairs(
-			faultpercentHeader, strconv.FormatInt(int64(config.ServerFaultPercent), 10),
+			faultpercentHeader, strconv.FormatInt(int64(config.Server.Value), 10),
 		)
 	}
 
-	if config.ServerFaultCodes != "" {
-		md.Append(faultcodesHeader, config.ServerFaultCodes)
+	if len(config.Codes) > 0 {
+		md.Append(faultcodesHeader, config.Codes)
+	}
+
+	if debugLevel > 10 {
+		logger.Print("md:", md)
 	}
 
 	ctxMD := metadata.NewOutgoingContext(ctx, md)

@@ -18,7 +18,7 @@ func ValidateModulus(modulus int64) (modulusInt uint64, err error) {
 
 // ValidatePercent ensure the percentage is between 1-100 inclusive
 func ValidatePercent(percent int64) (percentInt int, err error) {
-	if percent <= 0 || percent > 100 {
+	if percent < 1 || percent > 100 {
 		return percentInt, errInvalidPercent
 	}
 	return int(percent), nil

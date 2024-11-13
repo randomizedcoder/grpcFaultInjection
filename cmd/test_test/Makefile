@@ -10,20 +10,10 @@ BINARY := test_test
 
 all: clean build
 
-test:
-	go test
+test: TestComprehensive
 
 clean:
 	[ -f ${BINARY} ] && rm -rf ./${BINARY} || true
-
-build:
-	go build -ldflags \
-		"-X main.commit=${COMMIT} -X main.date=${DATE} -X main.version=${VERSION}" \
-		-o ./${BINARY} \
-		./${BINARY}.go
-
-loop:
-	./loop.bash
 
 hyperfine:
 	hyperfine \
@@ -36,5 +26,8 @@ hyperfineDebug:
 		--show-output \
 		--runs 100 \
 		'go test -v'
+
+TestComprehensive:
+	go test -run TestComprehensive -v
 
 # end
