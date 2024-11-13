@@ -2,6 +2,7 @@ package unaryClientFaultInjector
 
 import (
 	"fmt"
+	"strings"
 )
 
 type Mode int32
@@ -34,10 +35,18 @@ func (m Mode) toString() {
 }
 
 func StringToMode(str string) (mode Mode) {
-	switch str {
-	case "Modulus":
+	switch strings.ToLower(str) {
+	case "m":
 		mode = Modulus
-	case "Percent":
+	case "mod":
+		mode = Modulus
+	case "modulus":
+		mode = Modulus
+	case "p":
+		mode = Percent
+	case "per":
+		mode = Percent
+	case "percent":
 		mode = Percent
 		//default:
 	}

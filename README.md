@@ -37,25 +37,43 @@ https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/server/serve
 
 ## Client usage
 
+The configuration requires configuring both the client side and server side fault injection values.
+
+Select between modes "Modulus" or "Percent", and then enter a integer value:
+- Modules 1-10,000
+- Percent 1-100
+
 The client needs a configuration as follows:
 ```
+const (
+	Modulus Mode = iota
+	Percent Mode = 1
+)
+
+type ModeValue struct {
+	Mode  Mode
+	Value int
+}
+
 type UnaryClientInterceptorConfig struct {
-	ClientFaultModulus int
-	ClientFaultPercent int
-	ServerFaultModulus int
-	ServerFaultPercent int
-	ServerFaultCodes   string
+	Client ModeValue
+	Server ModeValue
+	Codes  string
 }
 ```
 Modulus is preferred over percentage.  If modulus is zero (0) then it tries to use the percentage.
 
-### ClientFaultModulus
+Link to code:
+https://github.com/randomizedcoder/grpcFaultInjection/blob/main/pkg/unaryClientFaultInjector/unaryClientFaultInjector_config.go#L19
+
+### Client Modulus Mode
 The client can be configured to insert the fault headers based on a modulus of the number
 of requests the client has made.
 
 Examples
+Client.Mode = Modulus
 
-| ClientFaultModulus | Description                                                          |
+| Client.Value       | Description                                                          |
 | ------------------ | -------------------------------------------------------------------- |
 | 0                  | Does NOT use modulus, so you need to configure percentage            |
 | 1                  | 1/1 = 100% of the time the metadata(headers) are injected = Always   |
@@ -65,23 +83,27 @@ Examples
 | 100                | 1/100 of the time the metadata(headers) are injected                 |
 
 
-### ClientFaultPercent
+### Client Percent Mode
 Alternatively, the client can be configured to randomly trigger the fault headers to be injected.
+
+Client.Mode = Percent
 
 Examples
 
-| ClientFaultPercent | Description                                                  |
+| Client.Value       | Description                                                  |
 | ------------------ | ------------------------------------------------------------ |
 | 10                 | 10% of the time the metadata(headers) are injected           |
 | 100                | 100% of the time the metadata(headers) are injected = Always |
 
-### ServerFaultModulus
+### Server Modulus Mode
 The server is controlled by the headers being passed to it.  The client uses the "ServerFaultModulus"
 variable to tell the client what values to pass in the "faultmodulus" header
 
+Sever.Mode = Modules
+
 Examples
 
-| ServerFaultModulus | Description                                                          |
+| Server.Value       | Description                                                          |
 | ------------------ | -------------------------------------------------------------------- |
 | 0                  | Does NOT use modulus, so you need to configure percentage            |
 | 1                  | 1/1 = 100% of the time the server will respond with a fault = Always |
@@ -90,7 +112,7 @@ Examples
 |...                 |                                                                      |
 | 100                | 1/100 of the time the server will inject the fault                   |
 
-### ServerFaultPercent
+### Server Percent Mode
 The client can be configured with "ServerFaultPercent", which instructs the client
 to insert metadata into the request "faultpercent", which the GPRC server uses to
 randomly insert faults at this percentage. e.g. 10 means server has a 10% chance of injecting a
@@ -99,9 +121,11 @@ fault.
 The configuration ServerFaultPercent injects the "faultpercent" header which is
 passed to the server.
 
+Sever.Mode = Percent
+
 Examples
 
-| ServerFaultPercent | Description                                                     |
+| Server.Value       | Description                                                     |
 | ------------------ | --------------------------------------------------------------- |
 | 50                 | 50% there is a 50% chance that the server will return a fault   |
 | 90                 | 90% chance the server will always return a fault                |
@@ -139,45 +163,45 @@ https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
 
 ## Config Matrix - Modulus
 
-Please keep in mind the ClientFaultModulus and ServerFaultModulus result in fault
+Please keep in mind the Client Modulus and Server Modulus value result in fault
 injection behaviour like the following:
 
-| ClientFaultModulus | ServerFaultModulus | Inject        | Comment                                  |
-|--------------------|--------------------|---------------|------------------------------------------|
-| 1                  | 0                  | 0             | Doesn't do much                          |
-| 0                  | 1                  | 0             |                                          |
-|                    |                    |               |                                          |
-| 1                  | 10                 | 1/10          | Recommended to use 1 on one end          |
-| 1                  | 2                  | 1/2           |                                          |
-| 10                 | 1                  | 1/10          |                                          |
-| 2                  | 1                  | 1/2           |                                          |
-|                    |                    |               |                                          |
-| 10                 | 10                 | 1/(10*10=100) | Tricky to reason about                   |
-| 2                  | 2                  | 1/(2*2=4)     |                                          |
-| 1                  | 2                  | 1/2           |                                          |
-|                    |                    |               |                                          |
-| 1                  | 1                  | 1             | Unlikely to be successful!               |
+| Client Modulus Value | Server Modulus Value | Inject        | Comment                                  |
+|----------------------|----------------------|---------------|------------------------------------------|
+| 1                    | 0                    | 0             | Doesn't do much                          |
+| 0                    | 1                    | 0             |                                          |
+|                      |                      |               |                                          |
+| 1                    | 10                   | 1/10          | Recommended to use 1 on one end          |
+| 1                    | 2                    | 1/2           |                                          |
+| 10                   | 1                    | 1/10          |                                          |
+| 2                    | 1                    | 1/2           |                                          |
+|                      |                      |               |                                          |
+| 10                   | 10                   | 1/(10*10=100) | Tricky to reason about                   |
+| 2                    | 2                    | 1/(2*2=4)     |                                          |
+| 1                    | 2                    | 1/2           |                                          |
+|                      |                      |               |                                          |
+| 1                    | 1                    | 1             | Unlikely to be successful!               |
 
 ## Config Matrix - Percentage
 
-Please keep in mind the ClientFaultPercent and ServerFaultPercent result in fault
+Please keep in mind the Client Percent and Server Percent values result in fault
 injection probabilities like the following:
 
-| ClientFaultPercent | ServerFaultPercent | Probability | Comment                                  |
-|--------------------|--------------------|-------------|------------------------------------------|
-| 100                | 0                  | 0%          | Doesn't do much                          |
-| 0                  | 100                | 0%          |                                          |
-|                    |                    |             |                                          |
-| 100                | 10                 | 10%         | Recommended to use 100% on one end       |
-| 100                | 50                 | 50%         |                                          |
-| 10                 | 100                | 10%         |                                          |
-| 50                 | 100                | 50%         |                                          |
-|                    |                    |             |                                          |
-| 10                 | 10                 | 1%          | Tricky to reason about                   |
-| 50                 | 50                 | 25%         |                                          |
-| 100                | 50                 | 50%         |                                          |
-|                    |                    |             |                                          |
-| 100                | 100                | 100%        | Unlikely to be successful!               |
+| Client Percent Value | Server Percent Value | Probability | Comment                                  |
+|----------------------|----------------------|-------------|------------------------------------------|
+| 100                  | 0                    | 0%          | Doesn't do much                          |
+| 0                    | 100                  | 0%          |                                          |
+|                      |                      |             |                                          |
+| 100                  | 10                   | 10%         | Recommended to use 100% on one end       |
+| 100                  | 50                   | 50%         |                                          |
+| 10                   | 100                  | 10%         |                                          |
+| 50                   | 100                  | 50%         |                                          |
+|                      |                      |             |                                          |
+| 10                   | 10                   | 1%          | Tricky to reason about                   |
+| 50                   | 50                   | 25%         |                                          |
+| 100                  | 50                   | 50%         |                                          |
+|                      |                      |             |                                          |
+| 100                  | 100                  | 100%        | Unlikely to be successful!               |
 
 ( test_test.go tries to follow this table )
 
@@ -187,63 +211,55 @@ injection probabilities like the following:
 
 Always inject errors, with any random error code.
 ```
-./client -clientfaultmodulus 1 -faultmodulus 1
+./client \
+	-clientmode Modulus \
+	-clientvalue 1 \
+	-servermode Modulus \
+	-servervalue 1 \
+	-loops 5
 ```
 
 ```
-[nix-shell:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientfaultmodulus 1 -faultmodulus 1
-2024/11/12 10:24:54.198618 fault request success:0 fault:1
-2024/11/12 10:24:54 i:0 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:317 success:158 fault:159
-2024/11/12 10:24:54.290040 fault request success:0 fault:2
-2024/11/12 10:24:54 i:1 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:318 success:158 fault:160
-2024/11/12 10:24:54.290285 fault request success:0 fault:3
-2024/11/12 10:24:54 i:2 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:319 success:158 fault:161
-2024/11/12 10:24:54.290547 fault request success:0 fault:4
-2024/11/12 10:24:54 i:3 UnaryEcho error: rpc error: code = ResourceExhausted desc = intercept fault code:8 counter:320 success:158 fault:162
-2024/11/12 10:24:54.290809 fault request success:0 fault:5
-2024/11/12 10:24:54 i:4 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:321 success:158 fault:163
-2024/11/12 10:24:54.291004 fault request success:0 fault:6
-2024/11/12 10:24:54 i:5 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:322 success:158 fault:164
-2024/11/12 10:24:54.291197 fault request success:0 fault:7
-2024/11/12 10:24:54 i:6 UnaryEcho error: rpc error: code = ResourceExhausted desc = intercept fault code:8 counter:323 success:158 fault:165
-2024/11/12 10:24:54.291463 fault request success:0 fault:8
-2024/11/12 10:24:54 i:7 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:324 success:158 fault:166
-2024/11/12 10:24:54.291693 fault request success:0 fault:9
-2024/11/12 10:24:54 i:8 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:325 success:158 fault:167
-2024/11/12 10:24:54.291876 fault request success:0 fault:10
-2024/11/12 10:24:54 i:9 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:326 success:158 fault:168
+[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientmode Modulus -clientvalue 1 -servermode Modulus -servervalue 1 -loops 5
+2024/11/12 16:37:12.245962 fault request success:0 fault:1
+2024/11/12 16:37:12 i:0 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:101 success:75 fault:26
+2024/11/12 16:37:12.251152 fault request success:0 fault:2
+2024/11/12 16:37:12 i:1 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:102 success:75 fault:27
+2024/11/12 16:37:12.251388 fault request success:0 fault:3
+2024/11/12 16:37:12 i:2 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:103 success:75 fault:28
+2024/11/12 16:37:12.251559 fault request success:0 fault:4
+2024/11/12 16:37:12 i:3 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:104 success:75 fault:29
+2024/11/12 16:37:12.251716 fault request success:0 fault:5
+2024/11/12 16:37:12 i:4 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:105 success:75 fault:30
 ```
 
 ### ExampleB
 
 Server will inject faults 1/2 of the time.
 ```
-./client -clientfaultmodulus 1 -faultmodulus 2
+./client \
+	-clientmode Modulus \
+	-clientvalue 1 \
+	-servermode Modulus \
+	-servervalue 2 \
+	-loops 6
 ```
 
 
 ```
-[nix-shell:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientfaultmodulus 1 -faultmodulus 2
-2024/11/12 10:25:00.502643 fault request success:0 fault:1
-2024/11/12 10:25:00 i:0 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:00.507951 fault request success:0 fault:2
-2024/11/12 10:25:00 i:1 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:328 success:159 fault:169
-2024/11/12 10:25:00.508160 fault request success:0 fault:3
-2024/11/12 10:25:00 i:2 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:00.508379 fault request success:0 fault:4
-2024/11/12 10:25:00 i:3 UnaryEcho error: rpc error: code = ResourceExhausted desc = intercept fault code:8 counter:330 success:160 fault:170
-2024/11/12 10:25:00.508550 fault request success:0 fault:5
-2024/11/12 10:25:00 i:4 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:00.508735 fault request success:0 fault:6
-2024/11/12 10:25:00 i:5 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:332 success:161 fault:171
-2024/11/12 10:25:00.508927 fault request success:0 fault:7
-2024/11/12 10:25:00 i:6 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:00.509115 fault request success:0 fault:8
-2024/11/12 10:25:00 i:7 UnaryEcho error: rpc error: code = ResourceExhausted desc = intercept fault code:8 counter:334 success:162 fault:172
-2024/11/12 10:25:00.509297 fault request success:0 fault:9
-2024/11/12 10:25:00 i:8 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:00.509446 fault request success:0 fault:10
-2024/11/12 10:25:00 i:9 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:336 success:163 fault:173
+[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientmode Modulus -clientvalue 1 -servermode Modulus -servervalue 2 -loops 6
+2024/11/12 16:37:56.942287 fault request success:0 fault:1
+2024/11/12 16:37:56 i:0 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:37:56.946410 fault request success:0 fault:2
+2024/11/12 16:37:56 i:1 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:112 success:78 fault:34
+2024/11/12 16:37:56.946641 fault request success:0 fault:3
+2024/11/12 16:37:56 i:2 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:37:56.946836 fault request success:0 fault:4
+2024/11/12 16:37:56 i:3 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:114 success:79 fault:35
+2024/11/12 16:37:56.947003 fault request success:0 fault:5
+2024/11/12 16:37:56 i:4 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:37:56.947148 fault request success:0 fault:6
+2024/11/12 16:37:56 i:5 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:116 success:80 fault:36
 ```
 
 ### ExampleC
@@ -251,32 +267,32 @@ Server will inject faults 1/2 of the time.
 Server will inject fault 1/4 of the time.
 
 ```
-./client -clientfaultmodulus 1 -faultmodulus 4
+./client \
+	-clientmode Modulus \
+	-clientvalue 1 \
+	-servermode Modulus \
+	-servervalue 4 \
+	-loops 8
 ```
 
-
 ```
-[nix-shell:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientfaultmodulus 1 -faultmodulus 4
-2024/11/12 10:25:11.998466 fault request success:0 fault:1
-2024/11/12 10:25:12 i:0 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:12.003191 fault request success:0 fault:2
-2024/11/12 10:25:12 i:1 UnaryEcho error: rpc error: code = ResourceExhausted desc = intercept fault code:8 counter:348 success:171 fault:177
-2024/11/12 10:25:12.003461 fault request success:0 fault:3
-2024/11/12 10:25:12 i:2 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:12.003659 fault request success:0 fault:4
-2024/11/12 10:25:12 i:3 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:12.003812 fault request success:0 fault:5
-2024/11/12 10:25:12 i:4 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:12.003951 fault request success:0 fault:6
-2024/11/12 10:25:12 i:5 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:352 success:174 fault:178
-2024/11/12 10:25:12.004095 fault request success:0 fault:7
-2024/11/12 10:25:12 i:6 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:12.004242 fault request success:0 fault:8
-2024/11/12 10:25:12 i:7 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:12.004402 fault request success:0 fault:9
-2024/11/12 10:25:12 i:8 UnaryEcho reply: message:"Try and Success"
-2024/11/12 10:25:12.004549 fault request success:0 fault:10
-2024/11/12 10:25:12 i:9 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 counter:356 success:177 fault:179
+[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientmode Modulus -clientvalue 1 -servermode Modulus -servervalue 4 -loops 8
+2024/11/12 16:38:21.822487 fault request success:0 fault:1
+2024/11/12 16:38:21 i:0 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:38:21.827774 fault request success:0 fault:2
+2024/11/12 16:38:21 i:1 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:38:21.827962 fault request success:0 fault:3
+2024/11/12 16:38:21 i:2 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:38:21.828162 fault request success:0 fault:4
+2024/11/12 16:38:21 i:3 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:120 success:83 fault:37
+2024/11/12 16:38:21.828336 fault request success:0 fault:5
+2024/11/12 16:38:21 i:4 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:38:21.828503 fault request success:0 fault:6
+2024/11/12 16:38:21 i:5 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:38:21.828653 fault request success:0 fault:7
+2024/11/12 16:38:21 i:6 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:38:21.828794 fault request success:0 fault:8
+2024/11/12 16:38:21 i:7 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:124 success:86 fault:38
 ```
 
 
@@ -287,67 +303,53 @@ Server will inject fault 1/4 of the time.
 This is an example that will always return a GRPC error status, the status code will be random.
 
 ```
-./client --loops 5 -clientfaultpercent 100 -faultpercent 100
+./client \
+	-clientmode Percent \
+	-clientvalue 100 \
+	-servermode Percent \
+	-servervalue 100 \
+	-loops 5
 ```
 
-| Variable           | Value             | Description                                                       |
-|--------------------|-------------------|-------------------------------------------------------------------|
-| clientfaultpercent | 100               | The client always inserts the headers                             |
-| faultpercent       | 100               | The client header instructs the server to always inject the fault |
-| failcodes          | < not specified > | Random response code between 1-16 inclusive                       |
-| Command            |                   | ./client --loops 5 -clientfaultpercent 100 -faultpercent 100      |
-
-
 ```
-[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client --loops 5 -clientfaultpercent 100 -faultpercent 100
-2024/11/08 11:29:39.002621 request success:0 fault:1
-2024/11/08 11:29:39 i:0 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:53 success:54 fault:57
-2024/11/08 11:29:39 i:0 UnaryEcho reply: <nil>
-2024/11/08 11:29:39.008069 request success:0 fault:2
-2024/11/08 11:29:39 i:1 UnaryEcho error: rpc error: code = ResourceExhausted desc = intercept fault code:8 rp:38 success:54 fault:58
-2024/11/08 11:29:39 i:1 UnaryEcho reply: <nil>
-2024/11/08 11:29:39.008260 request success:0 fault:3
-2024/11/08 11:29:39 i:2 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 rp:70 success:54 fault:59
-2024/11/08 11:29:39 i:2 UnaryEcho reply: <nil>
-2024/11/08 11:29:39.008447 request success:0 fault:4
-2024/11/08 11:29:39 i:3 UnaryEcho error: rpc error: code = DeadlineExceeded desc = intercept fault code:4 rp:45 success:54 fault:60
-2024/11/08 11:29:39 i:3 UnaryEcho reply: <nil>
-2024/11/08 11:29:39.008584 request success:0 fault:5
-2024/11/08 11:29:39 i:4 UnaryEcho error: rpc error: code = ResourceExhausted desc = intercept fault code:8 rp:28 success:54 fault:61
-2024/11/08 11:29:39 i:4 UnaryEcho reply: <nil>
+[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientmode Percent -clientvalue 100 -servermode Percent -servervalue 100 -loops 5
+2024/11/12 16:39:11.534763 fault request success:0 fault:1
+2024/11/12 16:39:11 i:0 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:125 success:86 fault:39
+2024/11/12 16:39:11.539314 fault request success:0 fault:2
+2024/11/12 16:39:11 i:1 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:126 success:86 fault:40
+2024/11/12 16:39:11.539540 fault request success:0 fault:3
+2024/11/12 16:39:11 i:2 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:127 success:86 fault:41
+2024/11/12 16:39:11.539700 fault request success:0 fault:4
+2024/11/12 16:39:11 i:3 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:128 success:86 fault:42
+2024/11/12 16:39:11.539864 fault request success:0 fault:5
+2024/11/12 16:39:11 i:4 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:129 success:86 fault:43
 ```
 
 ### ExampleB
 This is an example which will always return code 14 = Unavailable
 
 ```
-./client --loops 5 -clientfaultpercent 100 -faultpercent 100 --faultcodes 14
+./client \
+	-clientmode Percent \
+	-clientvalue 100 \
+	-servermode Percent \
+	-servervalue 100 \
+	-loops 5 \
+	-codes 14
 ```
 
-| Variable           | Value | Description                                                                 |
-|--------------------|-------|-----------------------------------------------------------------------------|
-| clientfaultpercent | 100   | The client always inserts the headers                                       |
-| faultpercent       | 100   | The client header instructs the server to always inject the fault           |
-| failcodes          | 14    | Response code is 14                                                         |
-| Command            |       | ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 -faultcodes 14 |
-
 ```
-[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 --faultcodes 14
-2024/11/08 11:31:03.541534 request success:0 fault:1
-2024/11/08 11:31:03 i:0 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:22 success:54 fault:62
-2024/11/08 11:31:03 i:0 UnaryEcho reply: <nil>
-2024/11/08 11:31:03.547073 request success:0 fault:2
-2024/11/08 11:31:03 i:1 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:16 success:54 fault:63
-2024/11/08 11:31:03 i:1 UnaryEcho reply: <nil>
-2024/11/08 11:31:03.547288 request success:0 fault:3
-2024/11/08 11:31:03 i:2 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:8 success:54 fault:64
-2024/11/08 11:31:03 i:2 UnaryEcho reply: <nil>
-2024/11/08 11:31:03.547460 request success:0 fault:4
-2024/11/08 11:31:03 i:3 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:33 success:54 fault:65
-2024/11/08 11:31:03 i:3 UnaryEcho reply: <nil>
-2024/11/08 11:31:03.547620 request success:0 fault:5
-2024/11/08 11:31:03 i:4 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:83 success:54 fault:66
-2024/11/08 11:31:03 i:4 UnaryEcho reply: <nil>
+[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientmode Percent -clientvalue 100 -servermode Percent -servervalue 100 -loops 5 -codes 14
+2024/11/12 16:39:48.790843 fault request success:0 fault:1
+2024/11/12 16:39:48 i:0 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:130 success:86 fault:44
+2024/11/12 16:39:48.797675 fault request success:0 fault:2
+2024/11/12 16:39:48 i:1 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:131 success:86 fault:45
+2024/11/12 16:39:48.797884 fault request success:0 fault:3
+2024/11/12 16:39:48 i:2 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:132 success:86 fault:46
+2024/11/12 16:39:48.798095 fault request success:0 fault:4
+2024/11/12 16:39:48 i:3 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:133 success:86 fault:47
+2024/11/12 16:39:48.798298 fault request success:0 fault:5
+2024/11/12 16:39:48 i:4 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:134 success:86 fault:48
 ```
 
 ### ExampleC
@@ -355,33 +357,29 @@ This is an example which will always return code 14 = Unavailable
 This is an example which will always return one of the error codes listed (10, 12, or 14)
 
 ```
-./client --loops 5 -clientfaultpercent 100 -faultpercent 100 --faultcodes 10,12,14
+./client \
+	-clientmode Percent \
+	-clientvalue 100 \
+	-servermode Percent \
+	-servervalue 100 \
+	-loops 6 \
+	-codes 10,12,14
 ```
 
-| Variable           | Value    | Description                                                                       |
-|--------------------|----------|-----------------------------------------------------------------------------------|
-| clientfaultpercent | 100      | The client always inserts the headers                                             |
-| faultpercent       | 100      | The client header instructs the server to always inject the fault                 |
-| failcodes          | 10,12,14 | The server will randomly return one of the codes 10, 12, or 14                    |
-| Command            |          | ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 -faultcodes 10,12,14 |
-
 ```
-[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client --loops 5 -clientfaultpercent 100 -faultpercent 100 --faultcodes 10,12,14
-2024/11/08 11:32:29.397913 request success:0 fault:1
-2024/11/08 11:32:29 i:0 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 rp:4 success:54 fault:67
-2024/11/08 11:32:29 i:0 UnaryEcho reply: <nil>
-2024/11/08 11:32:29.402258 request success:0 fault:2
-2024/11/08 11:32:29 i:1 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 rp:9 success:54 fault:68
-2024/11/08 11:32:29 i:1 UnaryEcho reply: <nil>
-2024/11/08 11:32:29.402484 request success:0 fault:3
-2024/11/08 11:32:29 i:2 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 rp:32 success:54 fault:69
-2024/11/08 11:32:29 i:2 UnaryEcho reply: <nil>
-2024/11/08 11:32:29.402655 request success:0 fault:4
-2024/11/08 11:32:29 i:3 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 rp:18 success:54 fault:70
-2024/11/08 11:32:29 i:3 UnaryEcho reply: <nil>
-2024/11/08 11:32:29.402804 request success:0 fault:5
-2024/11/08 11:32:29 i:4 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 rp:66 success:54 fault:71
-2024/11/08 11:32:29 i:4 UnaryEcho reply: <nil>
+[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientmode Percent -clientvalue 100 -servermode Percent -servervalue 100 -loops 6 -codes 10,12,14
+2024/11/12 16:40:26.895077 fault request success:0 fault:1
+2024/11/12 16:40:26 i:0 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:135 success:86 fault:49
+2024/11/12 16:40:26.899571 fault request success:0 fault:2
+2024/11/12 16:40:26 i:1 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:136 success:86 fault:50
+2024/11/12 16:40:26.899781 fault request success:0 fault:3
+2024/11/12 16:40:26 i:2 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:137 success:86 fault:51
+2024/11/12 16:40:26.899986 fault request success:0 fault:4
+2024/11/12 16:40:26 i:3 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:138 success:86 fault:52
+2024/11/12 16:40:26.900140 fault request success:0 fault:5
+2024/11/12 16:40:26 i:4 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:139 success:86 fault:53
+2024/11/12 16:40:26.900317 fault request success:0 fault:6
+2024/11/12 16:40:26 i:5 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:140 success:86 fault:54
 ```
 
 The client headers for this example look like this
@@ -392,6 +390,58 @@ The server headers for this example look like this.
 Keep in mind although this is a HTTP 200, it's actually a grpc-status = 14
 
 <img src="./docs/Screenshot from 2024-11-08 11-38-12.png" alt="xtcp_sampling diagram" width="100%" height="100%"/>
+
+
+### ExampleD
+
+The client and server do not need to use the same mode
+
+```
+./client \
+	-clientmode Modulus \
+	-clientvalue 2 \
+	-servermode Percent \
+	-servervalue 100 \
+	-loops 10 \
+	-codes 10,12,14 \
+	-debugLevel 111
+```
+
+
+```
+[das@t:~/Downloads/grpcFaultInjection/cmd/client]$ ./client -clientmode Modulus -clientvalue 2 -servermode Percent -servervalue 100 -loops 10 -codes 10,12,14 -debugLevel 111
+2024/11/12 16:47:46.209636 no fault request success:1 fault:0 ~= 0
+2024/11/12 16:47:46 i:0 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:47:46.223497 UnaryClientFaultInjector counter:2
+2024/11/12 16:47:46.223503 fault request success:1 fault:1 ~= 1
+2024/11/12 16:47:46.223507 md:map[faultcodes:[10,12,14] faultpercent:[100]]
+2024/11/12 16:47:46 i:1 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:194 success:96 fault:98
+2024/11/12 16:47:46.223733 no fault request success:2 fault:1 ~= 0.5
+2024/11/12 16:47:46 i:2 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:47:46.223909 UnaryClientFaultInjector counter:4
+2024/11/12 16:47:46.223913 fault request success:2 fault:2 ~= 1
+2024/11/12 16:47:46.223916 md:map[faultcodes:[10,12,14] faultpercent:[100]]
+2024/11/12 16:47:46 i:3 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:196 success:97 fault:99
+2024/11/12 16:47:46.224069 no fault request success:3 fault:2 ~= 0.667
+2024/11/12 16:47:46 i:4 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:47:46.224222 UnaryClientFaultInjector counter:6
+2024/11/12 16:47:46.224225 fault request success:3 fault:3 ~= 1
+2024/11/12 16:47:46.224228 md:map[faultcodes:[10,12,14] faultpercent:[100]]
+2024/11/12 16:47:46 i:5 UnaryEcho error: rpc error: code = Unimplemented desc = intercept fault code:12 counter:198 success:98 fault:100
+2024/11/12 16:47:46.224381 no fault request success:4 fault:3 ~= 0.75
+2024/11/12 16:47:46 i:6 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:47:46.224514 UnaryClientFaultInjector counter:8
+2024/11/12 16:47:46.224517 fault request success:4 fault:4 ~= 1
+2024/11/12 16:47:46.224519 md:map[faultcodes:[10,12,14] faultpercent:[100]]
+2024/11/12 16:47:46 i:7 UnaryEcho error: rpc error: code = Aborted desc = intercept fault code:10 counter:200 success:99 fault:101
+2024/11/12 16:47:46.224694 no fault request success:5 fault:4 ~= 0.8
+2024/11/12 16:47:46 i:8 UnaryEcho reply: message:"Try and Success"
+2024/11/12 16:47:46.224826 UnaryClientFaultInjector counter:10
+2024/11/12 16:47:46.224829 fault request success:5 fault:5 ~= 1
+2024/11/12 16:47:46.224832 md:map[faultcodes:[10,12,14] faultpercent:[100]]
+2024/11/12 16:47:46 i:9 UnaryEcho error: rpc error: code = Unavailable desc = intercept fault code:14 counter:202 success:100 fault:102
+2024/11/12 16:47:46 Complete.  success:5 fault:5
+```
 
 ## GRPC Metadata
 
@@ -459,6 +509,19 @@ There are serveral tests, loosly following the "Config Matrix" section above.
 The probabilitic nature of the tests makes it tricky not to be flakey.
 
 https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/test_test/test_test.go
+
+```
+[nix-shell:~/Downloads/grpcFaultInjection/cmd/test_test]$ go test -run TestComprehensive -v
+=== RUN   TestComprehensive
+    test_test.go:64: listen on address localhost:50053
+    test_test.go:320: run tests
+    test_test.go:324: tt.Name:1/1 client, 1/1 server fault, loops 100, = 100%
+=== RUN   TestComprehensive/1/1_client,_1/1_server_fault,_loops_100,_=_100%
+    test_test.go:395: tt.Name:1/1 client, 1/1 server fault, loops 100, = 100% success:0 minSuccess:0 = good
+    test_test.go:403: tt.Name:1/1 client, 1/1 server fault, loops 100, = 100% success:0 maxSuccess:0 = good
+    test_test.go:411: tt.Name:1/1 client, 1/1 server fault, loops 100, = 100% fault:100 minFault:100 = good
+    test_test.go:419: tt.Name:1/1 client, 1/1 server fault, loops 100, = 100% fault:100 minFault:100 = good
+```
 
 ### Reliability of tests
 
