@@ -22,9 +22,9 @@ import (
 var (
 	loops = flag.Int("loops", 10, "loops")
 
-	clientmode  = flag.String("clientmode", "Modulus", "clientmode 'Modulus' or 'Percent'")
+	clientmode  = flag.String("clientmode", "Modulus", "clientmode 'modulus/mod/m' or 'percent/per/p'")
 	clientvalue = flag.Int("clientvalue", 2, "clientvalue integers only, modulus 1-10000, percent 1-100")
-	servermode  = flag.String("servermode", "Modulus", "servermode 'Modulus' or 'Percent'")
+	servermode  = flag.String("servermode", "Modulus", "servermode 'modulus/mod/m' or 'percent/per/p'")
 	servervalue = flag.Int("servervalue", 2, "servervalue integers only, modulus 1-10000, percent 1-100")
 
 	codes = flag.String("codes", "10,12,14", "GRPC status codes to return. comma seperated")
@@ -86,6 +86,11 @@ func main() {
 		}
 	}()
 
+	var (
+		success int
+		fault   int
+	)
+
 	c := pb.NewEchoClient(conn)
 	for i := 0; i < *loops; i++ {
 
@@ -99,8 +104,12 @@ func main() {
 		)
 		if err != nil {
 			log.Printf("i:%d UnaryEcho error: %v", i, err)
+			fault++
 			continue
 		}
 		log.Printf("i:%d UnaryEcho reply: %v", i, reply)
+		success++
 	}
+
+	log.Printf("Complete.  success:%d fault:%d", success, fault)
 }
