@@ -13,20 +13,32 @@ import (
 // in the GRPC client
 func CheckConfig(config UnaryClientInterceptorConfig) error {
 
-	if _, err := validate.ValidateModulus(int64(config.ClientFaultModulus)); err != nil {
-		return fmt.Errorf("config.ClientFaultModulus error: %w", err)
+	switch config.Client.Mode {
+	case Modulus:
+		if _, err := validate.ValidateModulus(int64(config.Client.Value)); err != nil {
+			return fmt.Errorf("ValidateModulus config.Client.Value error: %w", err)
+		}
+	case Percent:
+		if _, err := validate.ValidatePercent(int64(config.Client.Value)); err != nil {
+			return fmt.Errorf("ValidatePercent config.Client.Value error: %w", err)
+		}
 	}
-	if _, err := validate.ValidatePercent(int64(config.ClientFaultPercent)); err != nil {
-		return fmt.Errorf("config.ClientFaultPercent error: %w", err)
+
+	switch config.Server.Mode {
+	case Modulus:
+		if _, err := validate.ValidateModulus(int64(config.Server.Value)); err != nil {
+			return fmt.Errorf("ValidateModulus config.Server.Value error: %w", err)
+		}
+	case Percent:
+		if _, err := validate.ValidatePercent(int64(config.Server.Value)); err != nil {
+			return fmt.Errorf("ValidatePercent config.Server.Value error: %w", err)
+		}
 	}
-	if _, err := validate.ValidatePercent(int64(config.ServerFaultModulus)); err != nil {
-		return fmt.Errorf("config.ServerFaultModulus error: %w", err)
-	}
-	if _, err := validate.ValidatePercent(int64(config.ServerFaultPercent)); err != nil {
-		return fmt.Errorf("config.ServerFaultPercent error: %w", err)
-	}
-	if err := validateCodes(config.ServerFaultCodes); err != nil {
-		return fmt.Errorf("config.ServerFaultCodes error: %w", err)
+
+	if len(config.Codes) > 0 {
+		if err := validateCodes(config.Codes); err != nil {
+			return fmt.Errorf("config.Codes error: %w", err)
+		}
 	}
 
 	return nil

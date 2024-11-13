@@ -12,104 +12,152 @@ type CheckConfigTest struct {
 func TestCheckConfig(t *testing.T) {
 	tests := []CheckConfigTest{
 		{
-			name: "valid, clean 1",
+			name: "valid, modulus 1",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultModulus: 1,
-				ClientFaultPercent: 1,
-				ServerFaultModulus: 1,
-				ServerFaultPercent: 1,
-				ServerFaultCodes:   "10",
+				Client: ModeValue{
+					Mode:  Modulus,
+					Value: 1,
+				},
+				Server: ModeValue{
+					Mode:  Modulus,
+					Value: 1,
+				},
+				Codes: "10",
 			},
 			expectErr: false,
 		},
 		{
-			name: "valid, clean 10",
+			name: "valid, percent 1",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultModulus: 10,
-				ClientFaultPercent: 10,
-				ServerFaultModulus: 10,
-				ServerFaultPercent: 10,
-				ServerFaultCodes:   "10",
+				Client: ModeValue{
+					Mode:  Percent,
+					Value: 1,
+				},
+				Server: ModeValue{
+					Mode:  Percent,
+					Value: 1,
+				},
+				Codes: "10",
 			},
 			expectErr: false,
 		},
 		{
-			name: "valid, clean 100",
+			name: "valid, modulus 1",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultModulus: 100,
-				ClientFaultPercent: 100,
-				ServerFaultModulus: 100,
-				ServerFaultPercent: 100,
-				ServerFaultCodes:   "10,12,14",
+				Client: ModeValue{
+					Mode:  Modulus,
+					Value: 10,
+				},
+				Server: ModeValue{
+					Mode:  Modulus,
+					Value: 10,
+				},
+				Codes: "10",
 			},
 			expectErr: false,
 		},
 		{
-			name: "invalid, clean 0",
+			name: "valid, percent 100",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultModulus: 0,
-				ClientFaultPercent: 0,
-				ServerFaultModulus: 0,
-				ServerFaultPercent: 0,
-				ServerFaultCodes:   "10,12,14",
+				Client: ModeValue{
+					Mode:  Percent,
+					Value: 100,
+				},
+				Server: ModeValue{
+					Mode:  Percent,
+					Value: 100,
+				},
+				Codes: "10",
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid, percent 0",
+			conf: UnaryClientInterceptorConfig{
+				Client: ModeValue{
+					Mode:  Percent,
+					Value: 0,
+				},
+				Server: ModeValue{
+					Mode:  Percent,
+					Value: 0,
+				},
+				Codes: "10",
 			},
 			expectErr: true,
 		},
 		{
-			name: "invalid, clean 10000",
+			name: "invalid,  percent 0",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultModulus: 10000,
-				ClientFaultPercent: 10000,
-				ServerFaultModulus: 10000,
-				ServerFaultPercent: 10000,
-				ServerFaultCodes:   "10,12,14",
+				Client: ModeValue{
+					Mode:  Percent,
+					Value: 0,
+				},
+				Server: ModeValue{
+					Mode:  Percent,
+					Value: 0,
+				},
+				Codes: "10",
 			},
 			expectErr: true,
 		},
 		{
-			name: "invalid, clean client modulus -100",
+			name: "invalid, percent 101",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultModulus: -100,
-				ClientFaultPercent: 100,
-				ServerFaultPercent: 100,
-				ServerFaultCodes:   "10,12,14",
+				Client: ModeValue{
+					Mode:  Percent,
+					Value: 101,
+				},
+				Server: ModeValue{
+					Mode:  Percent,
+					Value: 101,
+				},
+				Codes: "10",
 			},
 			expectErr: true,
 		},
 		{
-			name: "invalid, clean client -100",
+			name: "invalid, percent -1010",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultPercent: -100,
-				ServerFaultPercent: 100,
-				ServerFaultCodes:   "10,12,14",
+				Client: ModeValue{
+					Mode:  Percent,
+					Value: -1010,
+				},
+				Server: ModeValue{
+					Mode:  Percent,
+					Value: -1010,
+				},
+				Codes: "10",
 			},
 			expectErr: true,
 		},
 		{
-			name: "invalid, clean server modulus -100",
+			name: "invalid, modulus -1",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultPercent: 100,
-				ServerFaultModulus: -100,
-				ServerFaultPercent: 100,
-				ServerFaultCodes:   "10,12,14",
+				Client: ModeValue{
+					Mode:  Modulus,
+					Value: -1,
+				},
+				Server: ModeValue{
+					Mode:  Modulus,
+					Value: -1,
+				},
+				Codes: "10",
 			},
 			expectErr: true,
 		},
 		{
-			name: "invalid, clean server -100",
+			name: "invalid, modulus 10001",
 			conf: UnaryClientInterceptorConfig{
-				ClientFaultPercent: 100,
-				ServerFaultPercent: -100,
-				ServerFaultCodes:   "10,12,14",
-			},
-			expectErr: true,
-		},
-		{
-			name: "invalid, clean 100, invalid codes",
-			conf: UnaryClientInterceptorConfig{
-				ClientFaultPercent: 100,
-				ServerFaultPercent: 100,
-				ServerFaultCodes:   "not_a_code",
+				Client: ModeValue{
+					Mode:  Modulus,
+					Value: 10001,
+				},
+				Server: ModeValue{
+					Mode:  Modulus,
+					Value: 10001,
+				},
+				Codes: "10",
 			},
 			expectErr: true,
 		},

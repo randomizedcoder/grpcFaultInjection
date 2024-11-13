@@ -20,15 +20,19 @@ import (
 )
 
 var (
-	loops              = flag.Int("loops", 10, "loops")
-	addr               = flag.String("addr", "localhost:50052", "the address to connect to")
-	policy             = flag.String("policy", "grpc_client_policy.yaml", "filename of the grpc client policy.yaml")
-	clientfaultmodulus = flag.Int("clientfaultmodulus", 2, "clientfaultmodulus integers only between 1-10,000")
-	clientfaultpercent = flag.Int("clientfaultpercent", 50, "clientfaultpercent integers only between 0-100")
-	faultmodulus       = flag.Int("faultmodulus", 2, "faultmodulus integers only between 1-10,000")
-	faultpercent       = flag.Int("faultpercent", 50, "faultpercent integers only between 0-100")
-	faultcodes         = flag.String("faultcodes", "4,8,14", "faultcodes header to insert. single code, or comma seperated")
-	debugLevel         = flag.Int("debugLevel", 11, "debugLevel. > 10 for output")
+	loops = flag.Int("loops", 10, "loops")
+
+	clientmode  = flag.String("clientmode", "Modulus", "clientmode 'Modulus' or 'Percent'")
+	clientvalue = flag.Int("clientvalue", 2, "clientvalue integers only, modulus 1-10000, percent 1-100")
+	servermode  = flag.String("servermode", "Modulus", "servermode 'Modulus' or 'Percent'")
+	servervalue = flag.Int("servervalue", 2, "servervalue integers only, modulus 1-10000, percent 1-100")
+
+	codes = flag.String("codes", "10,12,14", "GRPC status codes to return. comma seperated")
+
+	addr   = flag.String("addr", "localhost:50052", "the address to connect to")
+	policy = flag.String("policy", "grpc_client_policy.yaml", "filename of the grpc client policy.yaml")
+
+	debugLevel = flag.Int("debugLevel", 11, "debugLevel. > 10 for output")
 )
 
 func main() {
@@ -45,11 +49,15 @@ func main() {
 	}
 
 	conf := unaryClientFaultInjector.UnaryClientInterceptorConfig{
-		ClientFaultModulus: *clientfaultmodulus,
-		ClientFaultPercent: *clientfaultpercent,
-		ServerFaultModulus: *faultmodulus,
-		ServerFaultPercent: *faultpercent,
-		ServerFaultCodes:   *faultcodes,
+		Client: unaryClientFaultInjector.ModeValue{
+			Mode:  unaryClientFaultInjector.StringToMode(*clientmode),
+			Value: *clientvalue,
+		},
+		Server: unaryClientFaultInjector.ModeValue{
+			Mode:  unaryClientFaultInjector.StringToMode(*servermode),
+			Value: *servervalue,
+		},
+		Codes: *codes,
 	}
 
 	if err := unaryClientFaultInjector.CheckConfig(conf); err != nil {

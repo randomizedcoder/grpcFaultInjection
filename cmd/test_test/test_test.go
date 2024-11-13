@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -41,28 +40,28 @@ var (
 	success atomic.Uint64
 )
 
-func TestPercents(t *testing.T) {
+// go test -run TestComprehensive -v
+func TestComprehensive(t *testing.T) {
 
-	address := "localhost:50052"
+	address := "localhost:50053"
 	policy := "grpc_client_policy.yaml"
-	port := 50052
+
 	debugLevel := 0
 	debugLevelGRPCServer := 0
 	debugLevelGRPCClient := 0
+	//debugLevelGRPCClient := 11
 
 	ctx := context.Background()
 
 	//------------------------------------------------
 	// Server setup
 
-	serverAddress := fmt.Sprintf(":%v", port)
-
-	lis, err := net.Listen("tcp", serverAddress)
+	lis, err := net.Listen("tcp", address)
 
 	if err != nil {
 		t.Fatalf("failed to listen: %v", err)
 	}
-	t.Log("listen on address", serverAddress)
+	t.Log("listen on address", address)
 
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(
@@ -97,6 +96,7 @@ func TestPercents(t *testing.T) {
 	type myTest struct {
 		name            string
 		config          unaryClientFaultInjector.UnaryClientInterceptorConfig
+		expectErr       bool
 		loops           int
 		checkMinSuccess bool
 		minSuccess      int
@@ -118,111 +118,200 @@ func TestPercents(t *testing.T) {
 	// We're prefer a little slop in the numbers, verse failing/flakey tests
 	tests := []myTest{
 		{
-			name: "100 client, 0 server fault, loops 100",
+			name: "1/1 client, 1/1 server fault, loops 100, = 100%",
 			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
-				ClientFaultPercent: 100,
-				ServerFaultPercent: 0,
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 1,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 1,
+				},
+				Codes: "10",
 			},
+			expectErr:       false,
 			loops:           100,
 			checkMinSuccess: true,
-			minSuccess:      100,
+			minSuccess:      0,
 			checkMaxSuccess: true,
-			maxSuccess:      100,
+			maxSuccess:      0,
 			checkMinFault:   true,
-			minFault:        0,
+			minFault:        100,
 			checkMaxFault:   true,
-			maxFault:        0,
+			maxFault:        100,
 		},
 		{
-			name: "0 client, 100 server fault, loops 100",
+			name: "1/1 client, 1/2 server fault, loops 100, = 50%",
 			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
-				ClientFaultPercent: 0,
-				ServerFaultPercent: 100,
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 1,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 2,
+				},
+				Codes: "10",
 			},
+			expectErr:       false,
 			loops:           100,
 			checkMinSuccess: true,
-			minSuccess:      100,
+			minSuccess:      int(100 * 0.5), // target is ~50%
 			checkMaxSuccess: true,
-			maxSuccess:      100,
+			maxSuccess:      int(100 * 0.5), // target is ~50%
 			checkMinFault:   true,
-			minFault:        0,
+			minFault:        int(100 * 0.5), // target is ~50%
 			checkMaxFault:   true,
-			maxFault:        0,
+			maxFault:        int(100 * 0.5), // target is ~50%
 		},
 		{
-			// the odds a fault for this test are pretty low (10% * 10% = ~1%)
+			name: "1/2 client, 1/1 server fault, loops 100, = 50%",
+			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 2,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 1,
+				},
+				Codes: "10",
+			},
+			expectErr:       false,
+			loops:           100,
+			checkMinSuccess: true,
+			minSuccess:      int(100 * 0.5), // target is ~50%
+			checkMaxSuccess: true,
+			maxSuccess:      int(100 * 0.5), // target is ~50%
+			checkMinFault:   true,
+			minFault:        int(100 * 0.5), // target is ~50%
+			checkMaxFault:   true,
+			maxFault:        int(100 * 0.5), // target is ~50%
+		},
+		{
+			name: "1/2 client, 1/2 server fault, loops 100, = 25%",
+			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 2,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 2,
+				},
+				Codes: "10",
+			},
+			expectErr:       false,
+			loops:           100,
+			checkMinSuccess: true,
+			minSuccess:      50,
+			checkMaxSuccess: false,
+			maxSuccess:      int(100 * 0.5), // target is ~50%
+			checkMinFault:   true,
+			minFault:        50,
+			checkMaxFault:   true,
+			maxFault:        int(100 * 0.5), // target is ~50%
+		},
+		{
+			// the odds a fault for this test are pretty low (1/10 * 1/10 = ~1%)
 			// increase the interations, and don't make too many promises, cos
 			// otherwise this test will be flake/annoying
-			name: "10 client, 10 server fault, loops 500",
+			name: "1/10 client, 1/10 server fault, loops 100, = 10%",
 			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
-				ClientFaultPercent: 10,
-				ServerFaultPercent: 10,
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 10,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 10,
+				},
+				Codes: "10",
 			},
-			loops:           500,
-			checkMinSuccess: true,
-			minSuccess:      1,
-			checkMaxSuccess: false,
-			maxSuccess:      99,
-			checkMinFault:   true,
-			minFault:        1,
-			checkMaxFault:   true,
-			maxFault:        int(500 * 0.2), // target is ~1%
-		},
-		{
-			// the odds a fault for this test are pretty low (50% * 50% = ~25%)
-			// increase the interations, and don't make too many promises, cos
-			// otherwise this test will be flake/annoying
-			name: "50 client, 50 server fault, loops 100",
-			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
-				ClientFaultPercent: 50,
-				ServerFaultPercent: 50,
-			},
+			expectErr:       false,
 			loops:           100,
 			checkMinSuccess: true,
-			minSuccess:      15,
-			checkMaxSuccess: false,
-			maxSuccess:      int(100 * 0.85), // target is ~75%
-			checkMinFault:   true,
-			minFault:        15,
-			checkMaxFault:   true,
-			maxFault:        int(100 * 0.4), // target is ~25%
-		},
-		{
-			name: "100 client, 50 server fault, loops 100",
-			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
-				ClientFaultPercent: 100,
-				ServerFaultPercent: 50,
-			},
-			loops:           100,
-			checkMinSuccess: true,
-			minSuccess:      int(100 * 0.3), // target is ~50%
+			minSuccess:      int(100 * 0.1),
 			checkMaxSuccess: true,
-			maxSuccess:      int(100 * 0.6), // target is ~50%
+			maxSuccess:      int(100 * 0.9),
 			checkMinFault:   true,
-			minFault:        int(100 * 0.3), // target is ~50%
+			minFault:        int(100 * 0.1),
 			checkMaxFault:   true,
-			maxFault:        int(100 * 0.6), // target is ~50%
+			maxFault:        int(100 * 0.1), // target is ~1%
 		},
 		{
-			name: "100 client, 10 server fault, loops 100",
+			name: "1/1 client, 1/10 server fault, loops 100, 10%",
 			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
-				ClientFaultPercent: 100,
-				ServerFaultPercent: 50,
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 1,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 10,
+				},
+				Codes: "10",
 			},
+			expectErr:       false,
 			loops:           100,
 			checkMinSuccess: true,
-			minSuccess:      int(100 * 0.05), // target is ~10%
+			minSuccess:      int(100 * 0.9), // target is ~10%
 			checkMaxSuccess: true,
-			maxSuccess:      int(100 * 0.95), // target is ~10%
+			maxSuccess:      int(100 * 0.9), // target is ~10%
 			checkMinFault:   true,
-			minFault:        int(100 * 0.05), // target is ~10%
+			minFault:        int(100 * 0.1), // target is ~10%
 			checkMaxFault:   true,
-			maxFault:        int(100 * 0.15), // target is ~10%
+			maxFault:        int(100 * 0.1), // target is ~10%
 		},
-		// {"Valid, mid percent", 50, false},
-		// {"Valid, high percent", 100, false},
-		// {"Invalid negative percent", -10, true},
-		// {"Invalid over 100 percent", 110, true},
+		{
+			name: "1/1 client, 1/3 server fault, loops 100, 33.333...%",
+			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 1,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 3,
+				},
+				Codes: "10",
+			},
+			expectErr:       false,
+			loops:           100,
+			checkMinSuccess: true,
+			minSuccess:      int(100 * 0.66), // target is ~66.66%
+			checkMaxSuccess: true,
+			maxSuccess:      int(100 * 0.67), // target is ~66.66%
+			checkMinFault:   true,
+			minFault:        int(100 * 0.33), // target is ~33.333%
+			checkMaxFault:   true,
+			maxFault:        int(100 * 0.34), // target is ~33.333%
+		},
+		{
+			name: "1/1 client, 1/6 server fault, loops 100, 16.666...",
+			config: unaryClientFaultInjector.UnaryClientInterceptorConfig{
+				Client: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 1,
+				},
+				Server: unaryClientFaultInjector.ModeValue{
+					Mode:  unaryClientFaultInjector.Modulus,
+					Value: 6,
+				},
+				Codes: "10",
+			},
+			expectErr:       false,
+			loops:           100,
+			checkMinSuccess: true,
+			minSuccess:      int(100 * 0.83), // target is ~83.334%
+			checkMaxSuccess: true,
+			maxSuccess:      int(100 * 0.84), // target is ~83.334%
+			checkMinFault:   true,
+			minFault:        int(100 * 0.16), // target is ~16.666%
+			checkMaxFault:   true,
+			maxFault:        int(100 * 0.17), // target is ~16.666%
+		},
 	}
 
 	//------------------------------------------------
@@ -240,6 +329,17 @@ func TestPercents(t *testing.T) {
 				success int
 				fault   int
 			)
+			if debugLevel > 11 {
+				t.Logf("tt.Name:%s success:%d fault:%d", tt.name, success, fault)
+			}
+
+			err := unaryClientFaultInjector.CheckConfig(tt.config)
+			if err != nil {
+
+				if !tt.expectErr {
+					t.Fatalf("checkConfig(config) fails: %v", err)
+				}
+			}
 
 			conn, err := grpc.NewClient(
 				address,
@@ -265,7 +365,7 @@ func TestPercents(t *testing.T) {
 			for i := 0; i < tt.loops; i++ {
 
 				if debugLevel > 10 {
-					t.Logf("tt.Name:%s i:%d", tt.name, i)
+					t.Logf("tt.Name:%s i:%d, success:%d fault:%d", tt.name, i, success, fault)
 				}
 
 				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
