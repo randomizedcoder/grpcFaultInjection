@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
-	"randomizedcoder/grpcFaultInjection/pkg/rand"
+	"github.com/randomizedcoder/grpcFaultInjection/internal/rand"
 )
 
 const (

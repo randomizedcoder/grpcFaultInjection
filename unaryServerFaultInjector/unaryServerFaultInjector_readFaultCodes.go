@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"randomizedcoder/grpcFaultInjection/pkg/validate"
+	"github.com/randomizedcoder/grpcFaultInjection/internal/validate"
 )
 
 const (
