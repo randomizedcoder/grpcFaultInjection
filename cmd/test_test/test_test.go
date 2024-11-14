@@ -11,8 +11,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	"randomizedcoder/grpcFaultInjection/unaryClientFaultInjector"
-	"randomizedcoder/grpcFaultInjection/unaryServerFaultInjector"
+	"github.com/randomizedcoder/grpcFaultInjection/unaryClientFaultInjector"
+	"github.com/randomizedcoder/grpcFaultInjection/unaryServerFaultInjector"
 
 	"google.golang.org/grpc/credentials/insecure"
 	pb "google.golang.org/grpc/examples/features/proto/echo"
