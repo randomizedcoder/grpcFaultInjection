@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/examples/features/proto/echo"
 
-	"randomizedcoder/grpcFaultInjection/unaryClientFaultInjector"
+	"github.com/randomizedcoder/grpcFaultInjection/unaryClientFaultInjector"
 )
 
 var (

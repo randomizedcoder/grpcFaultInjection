@@ -15,7 +15,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"randomizedcoder/grpcFaultInjection/unaryServerFaultInjector"
+	"github.com/randomizedcoder/grpcFaultInjection/unaryServerFaultInjector"
 
 	"google.golang.org/grpc/examples/features/proto/echo"
 )
