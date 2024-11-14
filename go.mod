@@ -1,6 +1,8 @@
-module randomizedcoder/grpcFaultInjection
+module github.com/randomizedcoder/grpcFaultInjection
 
 go 1.23.1
+
+replace github.com/randomizedcoder/grpcFaultInjection/ => /home/das/Downloads/grpcFaultInjection/
 
 require (
 	google.golang.org/grpc v1.68.0

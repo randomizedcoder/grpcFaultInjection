@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"randomizedcoder/grpcFaultInjection/pkg/validate"
+	"github.com/randomizedcoder/grpcFaultInjection/internal/validate"
 )
 
 // checkConfig is a simple configuration validator

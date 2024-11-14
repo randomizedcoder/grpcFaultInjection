@@ -14,9 +14,9 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	pb "google.golang.org/grpc/examples/features/proto/echo"
+	"google.golang.org/grpc/examples/features/proto/echo"
 
-	"randomizedcoder/grpcFaultInjection/pkg/unaryClientFaultInjector"
+	"randomizedcoder/grpcFaultInjection/unaryClientFaultInjector"
 )
 
 var (
@@ -91,14 +91,14 @@ func main() {
 		fault   int
 	)
 
-	c := pb.NewEchoClient(conn)
+	c := echo.NewEchoClient(conn)
 	for i := 0; i < *loops; i++ {
 
 		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 		defer cancel()
 
 		reply, err := c.UnaryEcho(ctx,
-			&pb.EchoRequest{
+			&echo.EchoRequest{
 				Message: "Try and Success",
 			},
 		)

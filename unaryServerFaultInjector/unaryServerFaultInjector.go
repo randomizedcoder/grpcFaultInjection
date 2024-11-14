@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"randomizedcoder/grpcFaultInjection/pkg/rand"
+	"github.com/randomizedcoder/grpcFaultInjection/internal/rand"
 )
 
 var (

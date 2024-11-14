@@ -15,9 +15,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"randomizedcoder/grpcFaultInjection/pkg/unaryServerFaultInjector"
+	"randomizedcoder/grpcFaultInjection/unaryServerFaultInjector"
 
-	pb "google.golang.org/grpc/examples/features/proto/echo"
+	"google.golang.org/grpc/examples/features/proto/echo"
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 )
 
 type echoServer struct {
-	pb.UnimplementedEchoServer
+	echo.UnimplementedEchoServer
 }
 
 func newEchoServer() (s echoServer) {
@@ -33,11 +33,11 @@ func newEchoServer() (s echoServer) {
 	return s
 }
 
-func (s echoServer) UnaryEcho(_ context.Context, req *pb.EchoRequest) (*pb.EchoResponse, error) {
+func (s echoServer) UnaryEcho(_ context.Context, req *echo.EchoRequest) (*echo.EchoResponse, error) {
 
 	log.Println("request succeeded count:", success.Add(1))
 
-	return &pb.EchoResponse{Message: req.Message}, nil
+	return &echo.EchoResponse{Message: req.Message}, nil
 }
 
 func main() {
@@ -64,7 +64,7 @@ func main() {
 
 	srv := newEchoServer()
 
-	pb.RegisterEchoServer(s, srv)
+	echo.RegisterEchoServer(s, srv)
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
