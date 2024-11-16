@@ -33,6 +33,18 @@ https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/client/clien
 
 **Server**
 
+Please note that if you multiple interceptors use ChainUnaryInterceptor
+https://pkg.go.dev/google.golang.org/grpc#ChainUnaryInterceptor
+```
+	s := grpc.NewServer(
+		// Use ChainUnaryInterceptor if you have multiple interceptors
+		grpc.ChainUnaryInterceptor(
+			//authInterceptor,
+			unaryServerFaultInjector.UnaryServerFaultInjector(*debugLevel),
+		),
+	)
+```
+
 https://github.com/randomizedcoder/grpcFaultInjection/blob/main/cmd/server/server.go
 
 ## Client usage

@@ -57,7 +57,10 @@ func main() {
 	fmt.Println("listen on address", address)
 
 	s := grpc.NewServer(
-		grpc.UnaryInterceptor(
+		// Use ChainUnaryInterceptor if you have multiple interceptors
+		// https://pkg.go.dev/google.golang.org/grpc#ChainUnaryInterceptor
+		grpc.ChainUnaryInterceptor(
+			//authInterceptor,
 			unaryServerFaultInjector.UnaryServerFaultInjector(*debugLevel),
 		),
 	)
